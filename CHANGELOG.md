@@ -3,6 +3,14 @@
 このプロジェクトのすべての注目すべき変更はこのファイルに記録されます。  
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.0.0/) に準拠しています。
 
+## [1.3.0] - 2025-07-24
+
+### Changed
+- 全 DLL を exe に結合した単一ファイル配布に変更（`PublishSingleFile` + `SelfContained`）
+- .NET ランタイム同梱により Windows 10/11 で追加インストール不要に
+- `config.ini` のパス解決を `Environment.ProcessPath` ベースに改善
+- 圧縮有効化によりファイルサイズを最適化
+
 ## [1.2.0] - 2025-07-24
 
 ### Added

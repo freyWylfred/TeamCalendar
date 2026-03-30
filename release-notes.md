@@ -1,13 +1,17 @@
-﻿# Release Notes v1.2.0
+﻿# Release Notes v1.3.0
 
-## New
-- Extracted meeting calculation logic into MeetingCalculator class for testability
-- Added unit test project TeamCalendar.Tests
+## 🎯 単一 exe 配布
+- **全 DLL を exe に結合** — `TeamCalendar.exe` 1つ + `config.ini` のみで動作
+- **.NET ランタイム同梱** — Windows 10/11 で追加インストール不要
+- **圧縮有効** — 約 46 MB（ランタイム込み）
 
-## Improved
-- Improved null safety in _dayStats processing (OfType)
+## 📦 配布内容
+| ファイル | 説明 |
+|---|---|
+| `TeamCalendar.exe` | アプリ本体（DLL + ランタイム結合済み） |
+| `config.ini` | 勤務時間設定（初回起動時に自動生成） |
 
-## Existing Features (since v1.1.0)
-- Day-of-week meeting/free time stacked bar chart
-- Timeline view with configurable work schedule
-- Excel export, Outlook calendar integration, modern UI
+## 使い方
+1. zip を任意のフォルダに展開
+2. `TeamCalendar.exe` を実行
+3. 必要に応じて `config.ini` で勤務時間を編集

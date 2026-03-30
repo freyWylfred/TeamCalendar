@@ -46,7 +46,8 @@ namespace TeamCalendar
             InitializeComponent();
             ApplyModernTheme();
 
-            var configPath = Path.Combine(AppContext.BaseDirectory, "config.ini");
+            var configDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+            var configPath = Path.Combine(configDir, "config.ini");
             WorkScheduleConfig.CreateDefaultIfMissing(configPath);
             _config = WorkScheduleConfig.Load(configPath);
             Log($"設定読込: 勤務 {_config.StartTime:hh\\:mm}-{_config.EndTime:hh\\:mm}, 休憩 {_config.BreakStartTime:hh\\:mm}-{_config.BreakEndTime:hh\\:mm}, 間隔 {_config.SlotMinutes}分");
