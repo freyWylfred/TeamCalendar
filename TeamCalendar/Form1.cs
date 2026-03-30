@@ -765,10 +765,10 @@ namespace TeamCalendar
                 double avg = userDayCount > 0 ? totalMeetingMinutes / userDayCount : 0;
                 return new DayOfWeekStats(dow, Math.Min(avg, workMinutes), workMinutes);
             })
-            .Where(s => s != null)
-            .ToList()!;
+            .OfType<DayOfWeekStats>()
+            .ToList();
 
-            Log($"曜日別統計算出完了: {string.Join(", ", _dayStats.Select(s => $"{DayLabel(s!.Day)}={s.MeetingMinutes:F0}分"))}");
+            Log($"曜日別統計算出完了: {string.Join(", ", _dayStats.Select(s => $"{DayLabel(s.Day)}={s.MeetingMinutes:F0}分"))}");
         }
 
         private double CalcUserMeetingMinutes(string user, DateTime date)
@@ -867,7 +867,7 @@ namespace TeamCalendar
                 g.DrawString("\U0001f4ca  曜日別  会議時間 / 空き時間", titleFont, titleBrush, cardRect.Left + 14, cardRect.Top + 8);
 
             // Y軸スケール
-            double maxHours = Math.Ceiling(_dayStats.Max(s => s!.WorkMinutes) / 60.0);
+            double maxHours = Math.Ceiling(_dayStats.Max(s => s.WorkMinutes) / 60.0);
             if (maxHours < 1) maxHours = 1;
 
             using var gridPen = new Pen(Color.FromArgb(238, 238, 238), 1);
@@ -903,7 +903,7 @@ namespace TeamCalendar
 
             for (int i = 0; i < _dayStats.Count; i++)
             {
-                var stat = _dayStats[i]!;
+                var stat = _dayStats[i];
                 float x = chartLeft + i * barAreaWidth + barGap;
 
                 double meetH = stat.MeetingMinutes / 60.0;

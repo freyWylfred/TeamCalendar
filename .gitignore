@@ -20,6 +20,9 @@ x86/
 [Bb]uild/
 bld/
 
+## Release artifacts
+*.zip
+
 ## IDE
 .idea/
 *.DotSettings.user
