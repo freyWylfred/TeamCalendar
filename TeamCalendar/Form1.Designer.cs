@@ -359,8 +359,9 @@
             dgvAppointments.GridColor = Color.FromArgb(235, 235, 235);
             dgvAppointments.ReadOnly = true;
             dgvAppointments.RowHeadersVisible = false;
-            dgvAppointments.RowTemplate.Height = 36;
-            dgvAppointments.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvAppointments.RowTemplate.Height = 32;
+            dgvAppointments.SelectionMode = DataGridViewSelectionMode.CellSelect;
+            dgvAppointments.CellDoubleClick += dgvAppointments_CellDoubleClick;
 
             //
             // txtLog

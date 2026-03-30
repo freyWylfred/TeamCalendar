@@ -635,74 +635,58 @@ namespace TeamCalendar
 
             try
             {
-                var dt = new DataTable();
-                dt.Columns.Add("ユーザー", typeof(string));
-                dt.Columns.Add("日付", typeof(string));
-
                 var slots = _config.GenerateTimeSlots();
-                foreach (var slot in slots)
-                    dt.Columns.Add(slot.ToString(@"hh\:mm"), typeof(string));
-
-                // ユーザーリスト構築（入力順を維持）
-                var users = new List<string>();
-                if (chkIncludeSelf.Checked) users.Add("自分");
-                foreach (var email in ParseUserEmails())
-                {
-                    if (!users.Contains(email, StringComparer.OrdinalIgnoreCase))
-                        users.Add(email);
-                }
-
                 var startDate = dtpStart.Value.Date;
                 var endDate = dtpEnd.Value.Date;
 
-                int rowIdx = 0;
-                foreach (var user in users)
+                // 平日の日付リスト
+                var dates = new List<DateTime>();
+                for (var d = startDate; d <= endDate; d = d.AddDays(1))
+                    if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
+                        dates.Add(d);
+
+                if (dates.Count == 0 || slots.Count == 0)
                 {
-                    for (var date = startDate; date <= endDate; date = date.AddDays(1))
+                    dgvAppointments.DataSource = null;
+                    Log("タイムライン: 表示する日付またはスロットがありません");
+                    return;
+                }
+
+                var dt = new DataTable();
+                dt.Columns.Add("時間", typeof(string));
+                foreach (var date in dates)
+                    dt.Columns.Add(date.ToString("M/dd(ddd)"), typeof(string));
+
+                // 行 = タイムスロット、列 = 日付
+                for (int si = 0; si < slots.Count; si++)
+                {
+                    var row = dt.NewRow();
+                    row["時間"] = slots[si].ToString(@"hh\:mm");
+
+                    for (int di = 0; di < dates.Count; di++)
                     {
-                        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
-                            continue;
+                        var date = dates[di];
+                        var slotStart = date.Add(slots[si]);
+                        var slotEnd = slotStart.AddMinutes(_config.SlotMinutes);
+                        int col = di + 1;
 
-                        var row = dt.NewRow();
-                        row["ユーザー"] = user;
-                        row["日付"] = date.ToString("MM/dd(ddd)");
-
-                        var dayAppts = _appointments
-                            .Where(a => a.Owner == user && a.Start.Date == date)
+                        var slotAppts = _appointments
+                            .Where(a => a.Start < slotEnd && a.End > slotStart)
                             .OrderBy(a => a.Start)
                             .ToList();
 
-                        var shownAppts = new HashSet<AppointmentInfo>();
+                        var apt = slotAppts.FirstOrDefault();
+                        _timelineCells[(si, col)] = apt;
 
-                        for (int si = 0; si < slots.Count; si++)
-                        {
-                            var slotStart = date.Add(slots[si]);
-                            var slotEnd = slotStart.AddMinutes(_config.SlotMinutes);
-                            int col = si + 2;
-
-                            var slotAppts = dayAppts.Where(a => a.Start < slotEnd && a.End > slotStart).ToList();
-                            var apt = slotAppts.FirstOrDefault();
-                            _timelineCells[(rowIdx, col)] = apt;
-
-                            if (slotAppts.Count > 1)
-                            {
-                                row[col] = $"{slotAppts.Count}件";
-                                foreach (var sa in slotAppts) shownAppts.Add(sa);
-                            }
-                            else if (apt != null && !shownAppts.Contains(apt))
-                            {
-                                row[col] = TruncateText(apt.Subject, 8);
-                                shownAppts.Add(apt);
-                            }
-                            else
-                            {
-                                row[col] = "";
-                            }
-                        }
-
-                        dt.Rows.Add(row);
-                        rowIdx++;
+                        if (slotAppts.Count > 1)
+                            row[col] = $"{slotAppts.Count}件";
+                        else if (apt != null)
+                            row[col] = TruncateText(apt.Subject, 12);
+                        else
+                            row[col] = "";
                     }
+
+                    dt.Rows.Add(row);
                 }
 
                 dgvAppointments.DataSource = dt;
@@ -711,37 +695,27 @@ namespace TeamCalendar
                 dgvAppointments.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
                 if (dgvAppointments.Columns.Count > 0)
                 {
-                    dgvAppointments.Columns[0].Width = 110;
+                    dgvAppointments.Columns[0].Width = 60;
                     dgvAppointments.Columns[0].Frozen = true;
-                    dgvAppointments.Columns[1].Width = 88;
-                    dgvAppointments.Columns[1].Frozen = true;
+                    dgvAppointments.Columns[0].DefaultCellStyle.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+                    dgvAppointments.Columns[0].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    dgvAppointments.Columns[0].DefaultCellStyle.BackColor = GridHeaderBg;
 
-                    for (int c = 2; c < dgvAppointments.Columns.Count; c++)
+                    int remainWidth = dgvAppointments.ClientSize.Width - 60;
+                    int colWidth = Math.Max(80, remainWidth / dates.Count);
+
+                    for (int c = 1; c < dgvAppointments.Columns.Count; c++)
                     {
-                        dgvAppointments.Columns[c].Width = 72;
+                        dgvAppointments.Columns[c].Width = colWidth;
                         dgvAppointments.Columns[c].DefaultCellStyle.Font = new Font("Segoe UI", 7.5F);
                         dgvAppointments.Columns[c].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
                     }
                 }
 
                 // セル色・ツールチップ適用
-                string prevUser = "";
-                bool altUser = false;
                 for (int r = 0; r < dgvAppointments.Rows.Count; r++)
                 {
-                    var currentUser = dgvAppointments.Rows[r].Cells[0].Value?.ToString() ?? "";
-                    if (currentUser != prevUser)
-                    {
-                        altUser = !altUser;
-                        prevUser = currentUser;
-                    }
-
-                    // ユーザー・日付列の背景（ユーザー交互色）
-                    var baseBg = altUser ? Color.FromArgb(250, 250, 252) : Color.White;
-                    dgvAppointments.Rows[r].Cells[0].Style.BackColor = baseBg;
-                    dgvAppointments.Rows[r].Cells[1].Style.BackColor = baseBg;
-
-                    for (int c = 2; c < dgvAppointments.Columns.Count; c++)
+                    for (int c = 1; c < dgvAppointments.Columns.Count; c++)
                     {
                         var cell = dgvAppointments.Rows[r].Cells[c];
 
@@ -755,25 +729,70 @@ namespace TeamCalendar
                                 4 => RowDeclined,
                                 _ => Color.White
                             };
-                            cell.ToolTipText = $"{apt.Subject}\n{apt.Start:HH:mm} \u2013 {apt.End:HH:mm}\n{apt.Status} / {apt.Organizer}";
+                            cell.ToolTipText = $"{apt.Subject}\n{apt.Start:HH:mm} – {apt.End:HH:mm}\n{apt.Status} / {apt.Organizer}";
                         }
                         else
                         {
-                            int si = c - 2;
-                            if (si < slots.Count && _config.IsBreakSlot(slots[si]))
-                            {
+                            if (r < slots.Count && _config.IsBreakSlot(slots[r]))
                                 cell.Style.BackColor = BreakBg;
-                            }
                         }
                     }
+
+                    // 休憩行の時間セル
+                    if (r < slots.Count && _config.IsBreakSlot(slots[r]))
+                        dgvAppointments.Rows[r].Cells[0].Style.BackColor = BreakBg;
                 }
 
-                Log($"タイムライングリッド バインド完了: {dt.Rows.Count}行, {slots.Count}タイムスロット");
+                Log($"タイムライングリッド バインド完了: {slots.Count}行(時間) × {dates.Count}列(日付)");
             }
             catch (Exception ex)
             {
                 LogError("タイムライングリッドのバインドに失敗しました", ex);
             }
+        }
+
+        private void dgvAppointments_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 1) return;
+
+            if (!_timelineCells.TryGetValue((e.RowIndex, e.ColumnIndex), out var apt) || apt is null)
+                return;
+
+            // 同じセルに複数の予定がある場合はすべて表示
+            var slots = _config.GenerateTimeSlots();
+            if (e.RowIndex >= slots.Count) return;
+
+            var startDate = dtpStart.Value.Date;
+            var dates = new List<DateTime>();
+            for (var d = startDate; d <= dtpEnd.Value.Date; d = d.AddDays(1))
+                if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
+                    dates.Add(d);
+
+            int di = e.ColumnIndex - 1;
+            if (di >= dates.Count) return;
+
+            var date = dates[di];
+            var slotStart = date.Add(slots[e.RowIndex]);
+            var slotEnd = slotStart.AddMinutes(_config.SlotMinutes);
+
+            var slotAppts = _appointments
+                .Where(a => a.Start < slotEnd && a.End > slotStart)
+                .OrderBy(a => a.Start)
+                .ToList();
+
+            if (slotAppts.Count == 0) return;
+
+            var details = string.Join("\n─────────────────────────\n",
+                slotAppts.Select(a =>
+                    $"📌 {a.Subject}\n" +
+                    $"  時間:  {a.Start:yyyy/MM/dd HH:mm} – {a.End:HH:mm} ({a.Duration}分)\n" +
+                    $"  主催者:  {a.Organizer}\n" +
+                    $"  場所:  {(string.IsNullOrEmpty(a.Location) ? "—" : a.Location)}\n" +
+                    $"  状態:  {a.Status}\n" +
+                    $"  対象:  {a.Owner}"));
+
+            var title = $"会議詳細 — {date:M/dd(ddd)} {slots[e.RowIndex]:hh\\:mm}";
+            MessageBox.Show(details, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private static string TruncateText(string text, int maxLength)
