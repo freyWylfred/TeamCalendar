@@ -14,6 +14,7 @@ namespace TeamCalendar
             DateTime date,
             WorkScheduleConfig config)
         {
+            // 承認(3) / 主催者(1) のみ集計対象
             var dayAppts = appointments
                 .Where(a => a.Owner == user && a.Start.Date == date && a.ResponseStatus is 3 or 1)
                 .OrderBy(a => a.Start)

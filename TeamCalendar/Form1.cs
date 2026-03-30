@@ -126,7 +126,7 @@ namespace TeamCalendar
         {
             var card = new Panel
             {
-                Size = new Size(180, 56),
+                Size = new Size(180, 70),
                 Margin = new Padding(6, 0, 6, 0),
                 BackColor = Color.White,
             };
@@ -774,6 +774,7 @@ namespace TeamCalendar
 
         private double CalcUserMeetingMinutes(string user, DateTime date)
         {
+            // 承認(3) / 主催者(1) のみグラフ集計対象
             var dayAppts = _appointments
                 .Where(a => a.Owner == user && a.Start.Date == date && a.ResponseStatus is 3 or 1)
                 .OrderBy(a => a.Start)

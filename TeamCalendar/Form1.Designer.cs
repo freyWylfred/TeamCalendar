@@ -227,7 +227,7 @@
             pnlSummary.Dock = DockStyle.Top;
             pnlSummary.Location = new Point(0, 152);
             pnlSummary.Padding = new Padding(16, 10, 16, 10);
-            pnlSummary.Size = new Size(1100, 76);
+            pnlSummary.Size = new Size(1100, 90);
             pnlSummary.WrapContents = false;
 
             //
