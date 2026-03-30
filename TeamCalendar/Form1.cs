@@ -45,6 +45,7 @@ namespace TeamCalendar
         {
             InitializeComponent();
             ApplyModernTheme();
+            LoadAppIcon();
 
             var configDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
             var configPath = Path.Combine(configDir, "config.ini");
@@ -55,6 +56,15 @@ namespace TeamCalendar
             dtpStart.Value = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek + 1);
             dtpEnd.Value = dtpStart.Value.AddDays(4);
             txtUserEmails.PlaceholderText = "例: user1@example.com; user2@example.com";
+        }
+
+        private void LoadAppIcon()
+        {
+            var icoPath = Path.Combine(
+                Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory,
+                "app.ico");
+            if (File.Exists(icoPath))
+                Icon = new Icon(icoPath);
         }
 
         #region テーマ適用
