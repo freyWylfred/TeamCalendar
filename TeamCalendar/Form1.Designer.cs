@@ -39,6 +39,7 @@
             btnExport = new Button();
             chkDebugLog = new CheckBox();
             pnlSummary = new FlowLayoutPanel();
+            pnlChart = new Panel();
             pnlUserInput = new Panel();
             lblUserEmails = new Label();
             txtUserEmails = new TextBox();
@@ -230,6 +231,13 @@
             pnlSummary.WrapContents = false;
 
             //
+            // pnlChart
+            //
+            pnlChart.BackColor = Color.FromArgb(243, 243, 243);
+            pnlChart.Dock = DockStyle.Top;
+            pnlChart.Size = new Size(1100, 210);
+
+            //
             // pnlGridWrapper
             //
             pnlGridWrapper.BackColor = Color.FromArgb(243, 243, 243);
@@ -305,15 +313,16 @@
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(243, 243, 243);
-            ClientSize = new Size(1100, 650);
+            ClientSize = new Size(1100, 820);
             Controls.Add(pnlGridWrapper);
+            Controls.Add(pnlChart);
             Controls.Add(pnlSummary);
             Controls.Add(pnlUserInput);
             Controls.Add(pnlToolbar);
             Controls.Add(pnlHeader);
             Controls.Add(statusStrip);
             Font = new Font("Segoe UI", 9F);
-            MinimumSize = new Size(900, 500);
+            MinimumSize = new Size(900, 600);
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Team Calendar";
 
@@ -353,6 +362,7 @@
         private TextBox txtUserEmails;
         private CheckBox chkIncludeSelf;
         private FlowLayoutPanel pnlSummary;
+        private Panel pnlChart;
         private Panel pnlGridWrapper;
         private SplitContainer splitMain;
         private DataGridView dgvAppointments;

@@ -12,6 +12,7 @@ namespace TeamCalendar
         private readonly List<AppointmentInfo> _appointments = [];
         private WorkScheduleConfig _config = new();
         private readonly Dictionary<(int row, int col), AppointmentInfo?> _timelineCells = [];
+        private List<DayOfWeekStats> _dayStats = [];
 
         // サマリーカード値ラベル
         private Label _lblTotalValue = null!;
@@ -87,6 +88,12 @@ namespace TeamCalendar
 
             // サマリーカード生成
             InitializeSummaryCards();
+
+            // グラフパネルの設定
+            typeof(Panel).InvokeMember("DoubleBuffered",
+                BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
+                null, pnlChart, [true]);
+            pnlChart.Paint += PaintChart;
         }
 
         private void InitializeSummaryCards()
@@ -217,7 +224,9 @@ namespace TeamCalendar
         {
             txtLog.Clear();
             _appointments.Clear();
+            _dayStats.Clear();
             dgvAppointments.DataSource = null;
+            pnlChart.Invalidate();
 
             Log("=== Outlook予定取得 開始 ===");
 
@@ -363,6 +372,8 @@ namespace TeamCalendar
                 }
 
                 BindTimelineGrid();
+                CalculateDayStats();
+                pnlChart.Invalidate();
 
                 int totalCount = _appointments.Count;
                 int acceptedCount = _appointments.Count(a => a.ResponseStatus is 3 or 1);
@@ -713,6 +724,273 @@ namespace TeamCalendar
 
         #endregion
 
+        #region グラフ
+
+        private void CalculateDayStats()
+        {
+            var workMinutes = (_config.EndTime - _config.StartTime).TotalMinutes
+                            - (_config.BreakEndTime - _config.BreakStartTime).TotalMinutes;
+
+            var startDate = dtpStart.Value.Date;
+            var endDate = dtpEnd.Value.Date;
+            var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday };
+
+            var users = _appointments.Select(a => a.Owner).Distinct().ToList();
+            if (users.Count == 0)
+            {
+                _dayStats = [];
+                return;
+            }
+
+            _dayStats = weekdays.Select(dow =>
+            {
+                var dates = new List<DateTime>();
+                for (var d = startDate; d <= endDate; d = d.AddDays(1))
+                    if (d.DayOfWeek == dow) dates.Add(d);
+
+                if (dates.Count == 0) return null;
+
+                double totalMeetingMinutes = 0;
+                int userDayCount = 0;
+
+                foreach (var user in users)
+                {
+                    foreach (var date in dates)
+                    {
+                        totalMeetingMinutes += CalcUserMeetingMinutes(user, date);
+                        userDayCount++;
+                    }
+                }
+
+                double avg = userDayCount > 0 ? totalMeetingMinutes / userDayCount : 0;
+                return new DayOfWeekStats(dow, Math.Min(avg, workMinutes), workMinutes);
+            })
+            .Where(s => s != null)
+            .ToList()!;
+
+            Log($"曜日別統計算出完了: {string.Join(", ", _dayStats.Select(s => $"{DayLabel(s!.Day)}={s.MeetingMinutes:F0}分"))}");
+        }
+
+        private double CalcUserMeetingMinutes(string user, DateTime date)
+        {
+            var dayAppts = _appointments
+                .Where(a => a.Owner == user && a.Start.Date == date && a.ResponseStatus is 3 or 1)
+                .OrderBy(a => a.Start)
+                .ToList();
+
+            if (dayAppts.Count == 0) return 0;
+
+            var workStart = date.Add(_config.StartTime);
+            var workEnd = date.Add(_config.EndTime);
+            var breakStart = date.Add(_config.BreakStartTime);
+            var breakEnd = date.Add(_config.BreakEndTime);
+
+            var intervals = new List<(DateTime s, DateTime e)>();
+            foreach (var a in dayAppts)
+            {
+                var s = a.Start < workStart ? workStart : a.Start;
+                var e = a.End > workEnd ? workEnd : a.End;
+                if (s >= e) continue;
+
+                if (s < breakStart && e <= breakStart)
+                    intervals.Add((s, e));
+                else if (s < breakStart && e > breakStart && e <= breakEnd)
+                    intervals.Add((s, breakStart));
+                else if (s < breakStart && e > breakEnd)
+                { intervals.Add((s, breakStart)); intervals.Add((breakEnd, e)); }
+                else if (s >= breakStart && s < breakEnd && e <= breakEnd)
+                { /* entirely in break */ }
+                else if (s >= breakStart && s < breakEnd && e > breakEnd)
+                    intervals.Add((breakEnd, e));
+                else
+                    intervals.Add((s, e));
+            }
+
+            if (intervals.Count == 0) return 0;
+            intervals = [.. intervals.OrderBy(i => i.s)];
+
+            var merged = new List<(DateTime s, DateTime e)> { intervals[0] };
+            for (int i = 1; i < intervals.Count; i++)
+            {
+                var last = merged[^1];
+                if (intervals[i].s <= last.e)
+                    merged[^1] = (last.s, intervals[i].e > last.e ? intervals[i].e : last.e);
+                else
+                    merged.Add(intervals[i]);
+            }
+
+            return merged.Sum(m => (m.e - m.s).TotalMinutes);
+        }
+
+        private void PaintChart(object? sender, PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+            var panel = (Panel)sender!;
+            var rect = panel.ClientRectangle;
+
+            // カード風の白背景
+            var cardRect = new Rectangle(16, 0, rect.Width - 32, rect.Height - 8);
+            using (var bgBrush = new SolidBrush(Color.White))
+                g.FillRectangle(bgBrush, cardRect);
+
+            if (_dayStats.Count == 0)
+            {
+                using var font = new Font("Segoe UI", 9.5F);
+                using var brush = new SolidBrush(TextSecondary);
+                var msg = "\U0001f4ca  予定を取得するとグラフが表示されます";
+                var sz = g.MeasureString(msg, font);
+                g.DrawString(msg, font, brush, (rect.Width - sz.Width) / 2, (rect.Height - sz.Height) / 2);
+                return;
+            }
+
+            int leftMargin = 72;
+            int rightMargin = 32;
+            int topMargin = 38;
+            int bottomMargin = 30;
+            int legendHeight = 24;
+
+            var chartLeft = cardRect.Left + leftMargin;
+            var chartTop = cardRect.Top + topMargin;
+            var chartBottom = cardRect.Bottom - bottomMargin - legendHeight;
+            var chartRight = cardRect.Right - rightMargin;
+            var chartWidth = chartRight - chartLeft;
+            var chartHeight = chartBottom - chartTop;
+
+            if (chartWidth <= 0 || chartHeight <= 0) return;
+
+            // タイトル
+            using (var titleFont = new Font("Segoe UI", 10F, FontStyle.Bold))
+            using (var titleBrush = new SolidBrush(Color.FromArgb(40, 40, 40)))
+                g.DrawString("\U0001f4ca  曜日別  会議時間 / 空き時間", titleFont, titleBrush, cardRect.Left + 14, cardRect.Top + 8);
+
+            // Y軸スケール
+            double maxHours = Math.Ceiling(_dayStats.Max(s => s!.WorkMinutes) / 60.0);
+            if (maxHours < 1) maxHours = 1;
+
+            using var gridPen = new Pen(Color.FromArgb(238, 238, 238), 1);
+            using var axisFont = new Font("Segoe UI", 7.5F);
+            using var axisBrush = new SolidBrush(Color.FromArgb(130, 130, 130));
+
+            int ySteps = (int)maxHours;
+            for (int h = 0; h <= ySteps; h++)
+            {
+                float y = chartBottom - (float)(h / maxHours * chartHeight);
+                g.DrawLine(gridPen, chartLeft, y, chartRight, y);
+                var label = $"{h}h";
+                var labelSz = g.MeasureString(label, axisFont);
+                g.DrawString(label, axisFont, axisBrush, chartLeft - labelSz.Width - 8, y - labelSz.Height / 2);
+            }
+
+            // バー描画
+            var meetingColor = Color.FromArgb(0, 120, 212);
+            var freeColor = Color.FromArgb(195, 230, 195);
+
+            float barAreaWidth = (float)chartWidth / _dayStats.Count;
+            float barWidth = Math.Min(barAreaWidth * 0.55f, 80);
+            float barGap = (barAreaWidth - barWidth) / 2;
+
+            using var meetBrush = new SolidBrush(meetingColor);
+            using var freeBrush = new SolidBrush(freeColor);
+            using var barLabelFont = new Font("Segoe UI", 7.5F, FontStyle.Bold);
+            using var dayFont = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+            using var whiteBrush = new SolidBrush(Color.White);
+            using var greenLabelBrush = new SolidBrush(Color.FromArgb(50, 110, 50));
+            using var darkBrush = new SolidBrush(Color.FromArgb(60, 60, 60));
+            using var pctBrush = new SolidBrush(Color.FromArgb(90, 90, 90));
+
+            for (int i = 0; i < _dayStats.Count; i++)
+            {
+                var stat = _dayStats[i]!;
+                float x = chartLeft + i * barAreaWidth + barGap;
+
+                double meetH = stat.MeetingMinutes / 60.0;
+                double freeH = stat.FreeMinutes / 60.0;
+
+                float meetBarH = (float)(meetH / maxHours * chartHeight);
+                float freeBarH = (float)(freeH / maxHours * chartHeight);
+
+                // 空き時間バー（上部）
+                if (freeBarH > 1)
+                    g.FillRectangle(freeBrush, x, chartBottom - meetBarH - freeBarH, barWidth, freeBarH);
+
+                // 会議時間バー（下部）
+                if (meetBarH > 1)
+                    g.FillRectangle(meetBrush, x, chartBottom - meetBarH, barWidth, meetBarH);
+
+                // 会議時間ラベル
+                if (meetBarH > 18)
+                {
+                    var ml = $"{meetH:F1}h";
+                    var ms = g.MeasureString(ml, barLabelFont);
+                    g.DrawString(ml, barLabelFont, whiteBrush,
+                        x + (barWidth - ms.Width) / 2,
+                        chartBottom - meetBarH + (meetBarH - ms.Height) / 2);
+                }
+
+                // 空き時間ラベル
+                if (freeBarH > 18)
+                {
+                    var fl = $"{freeH:F1}h";
+                    var fs = g.MeasureString(fl, barLabelFont);
+                    g.DrawString(fl, barLabelFont, greenLabelBrush,
+                        x + (barWidth - fs.Width) / 2,
+                        chartBottom - meetBarH - freeBarH + (freeBarH - fs.Height) / 2);
+                }
+
+                // 会議率パーセンテージ（バー上部）
+                double pct = stat.WorkMinutes > 0 ? stat.MeetingMinutes / stat.WorkMinutes * 100 : 0;
+                var pctLabel = $"{pct:F0}%";
+                var pctSz = g.MeasureString(pctLabel, barLabelFont);
+                g.DrawString(pctLabel, barLabelFont, pctBrush,
+                    x + (barWidth - pctSz.Width) / 2,
+                    chartBottom - meetBarH - freeBarH - pctSz.Height - 2);
+
+                // 曜日ラベル
+                var dayName = DayLabel(stat.Day);
+                var daySz = g.MeasureString(dayName, dayFont);
+                g.DrawString(dayName, dayFont, darkBrush,
+                    x + (barWidth - daySz.Width) / 2, chartBottom + 4);
+            }
+
+            // X軸線
+            using var axisPen = new Pen(Color.FromArgb(210, 210, 210), 1);
+            g.DrawLine(axisPen, chartLeft, chartBottom, chartRight, chartBottom);
+
+            // 凡例
+            float legendY = cardRect.Bottom - legendHeight - 2;
+            float legendX = chartLeft;
+
+            using var legendFont = new Font("Segoe UI", 8F);
+            using var legendTextBrush = new SolidBrush(Color.FromArgb(90, 90, 90));
+
+            g.FillRectangle(meetBrush, legendX, legendY + 3, 14, 14);
+            g.DrawString("会議時間", legendFont, legendTextBrush, legendX + 18, legendY + 2);
+
+            legendX += 95;
+            g.FillRectangle(freeBrush, legendX, legendY + 3, 14, 14);
+            g.DrawString("空き時間", legendFont, legendTextBrush, legendX + 18, legendY + 2);
+
+            // 勤務時間注釈
+            legendX += 95;
+            var note = $"（勤務 {_config.StartTime:hh\\:mm}–{_config.EndTime:hh\\:mm}  休憩除く）";
+            g.DrawString(note, legendFont, axisBrush, legendX, legendY + 2);
+        }
+
+        private static string DayLabel(DayOfWeek dow) => dow switch
+        {
+            DayOfWeek.Monday => "月",
+            DayOfWeek.Tuesday => "火",
+            DayOfWeek.Wednesday => "水",
+            DayOfWeek.Thursday => "木",
+            DayOfWeek.Friday => "金",
+            _ => dow.ToString()
+        };
+
+        #endregion
+
         #region Excel出力
 
         private void ExportAcceptedToExcel()
@@ -901,5 +1179,10 @@ namespace TeamCalendar
         public string Location { get; set; } = "";
         public string Status { get; set; } = "";
         public int ResponseStatus { get; set; }
+    }
+
+    public record DayOfWeekStats(DayOfWeek Day, double MeetingMinutes, double WorkMinutes)
+    {
+        public double FreeMinutes => Math.Max(0, WorkMinutes - MeetingMinutes);
     }
 }
