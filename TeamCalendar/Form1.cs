@@ -10,6 +10,8 @@ namespace TeamCalendar
     public partial class Form1 : Form
     {
         private readonly List<AppointmentInfo> _appointments = [];
+        private WorkScheduleConfig _config = new();
+        private readonly Dictionary<(int row, int col), AppointmentInfo?> _timelineCells = [];
 
         // サマリーカード値ラベル
         private Label _lblTotalValue = null!;
@@ -34,6 +36,7 @@ namespace TeamCalendar
         private static readonly Color GridHeaderBg = Color.FromArgb(246, 248, 250);
         private static readonly Color GridHeaderFg = Color.FromArgb(60, 60, 60);
         private static readonly Color GridSelection = Color.FromArgb(210, 232, 255);
+        private static readonly Color BreakBg = Color.FromArgb(235, 235, 232);
 
         #endregion
 
@@ -41,6 +44,12 @@ namespace TeamCalendar
         {
             InitializeComponent();
             ApplyModernTheme();
+
+            var configPath = Path.Combine(AppContext.BaseDirectory, "config.ini");
+            WorkScheduleConfig.CreateDefaultIfMissing(configPath);
+            _config = WorkScheduleConfig.Load(configPath);
+            Log($"設定読込: 勤務 {_config.StartTime:hh\\:mm}-{_config.EndTime:hh\\:mm}, 休憩 {_config.BreakStartTime:hh\\:mm}-{_config.BreakEndTime:hh\\:mm}, 間隔 {_config.SlotMinutes}分");
+
             dtpStart.Value = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek + 1);
             dtpEnd.Value = dtpStart.Value.AddDays(4);
             txtUserEmails.PlaceholderText = "例: user1@example.com; user2@example.com";
@@ -353,7 +362,7 @@ namespace TeamCalendar
                     Log($"[WARN] {totalSkipped}件の予定が読み取れずスキップされました。");
                 }
 
-                BindDataGrid();
+                BindTimelineGrid();
 
                 int totalCount = _appointments.Count;
                 int acceptedCount = _appointments.Count(a => a.ResponseStatus is 3 or 1);
@@ -546,59 +555,160 @@ namespace TeamCalendar
 
         #endregion
 
-        #region DataGrid表示
+        #region タイムライン表示
 
-        private void BindDataGrid()
+        private void BindTimelineGrid()
         {
-            Log("DataGridView へのバインドを開始...");
+            Log("タイムライングリッドへのバインドを開始...");
+            _timelineCells.Clear();
 
             try
             {
                 var dt = new DataTable();
                 dt.Columns.Add("ユーザー", typeof(string));
-                dt.Columns.Add("件名", typeof(string));
-                dt.Columns.Add("開始日時", typeof(string));
-                dt.Columns.Add("終了日時", typeof(string));
-                dt.Columns.Add("時間(分)", typeof(int));
-                dt.Columns.Add("開催者", typeof(string));
-                dt.Columns.Add("場所", typeof(string));
-                dt.Columns.Add("ステータス", typeof(string));
+                dt.Columns.Add("日付", typeof(string));
 
-                foreach (var a in _appointments)
+                var slots = _config.GenerateTimeSlots();
+                foreach (var slot in slots)
+                    dt.Columns.Add(slot.ToString(@"hh\:mm"), typeof(string));
+
+                // ユーザーリスト構築（入力順を維持）
+                var users = new List<string>();
+                if (chkIncludeSelf.Checked) users.Add("自分");
+                foreach (var email in ParseUserEmails())
                 {
-                    dt.Rows.Add(
-                        a.Owner,
-                        a.Subject,
-                        a.Start.ToString("yyyy/MM/dd HH:mm"),
-                        a.End.ToString("yyyy/MM/dd HH:mm"),
-                        a.Duration,
-                        a.Organizer,
-                        a.Location,
-                        a.Status);
+                    if (!users.Contains(email, StringComparer.OrdinalIgnoreCase))
+                        users.Add(email);
+                }
+
+                var startDate = dtpStart.Value.Date;
+                var endDate = dtpEnd.Value.Date;
+
+                int rowIdx = 0;
+                foreach (var user in users)
+                {
+                    for (var date = startDate; date <= endDate; date = date.AddDays(1))
+                    {
+                        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                            continue;
+
+                        var row = dt.NewRow();
+                        row["ユーザー"] = user;
+                        row["日付"] = date.ToString("MM/dd(ddd)");
+
+                        var dayAppts = _appointments
+                            .Where(a => a.Owner == user && a.Start.Date == date)
+                            .OrderBy(a => a.Start)
+                            .ToList();
+
+                        var shownAppts = new HashSet<AppointmentInfo>();
+
+                        for (int si = 0; si < slots.Count; si++)
+                        {
+                            var slotStart = date.Add(slots[si]);
+                            var slotEnd = slotStart.AddMinutes(_config.SlotMinutes);
+                            int col = si + 2;
+
+                            var slotAppts = dayAppts.Where(a => a.Start < slotEnd && a.End > slotStart).ToList();
+                            var apt = slotAppts.FirstOrDefault();
+                            _timelineCells[(rowIdx, col)] = apt;
+
+                            if (slotAppts.Count > 1)
+                            {
+                                row[col] = $"{slotAppts.Count}件";
+                                foreach (var sa in slotAppts) shownAppts.Add(sa);
+                            }
+                            else if (apt != null && !shownAppts.Contains(apt))
+                            {
+                                row[col] = TruncateText(apt.Subject, 8);
+                                shownAppts.Add(apt);
+                            }
+                            else
+                            {
+                                row[col] = "";
+                            }
+                        }
+
+                        dt.Rows.Add(row);
+                        rowIdx++;
+                    }
                 }
 
                 dgvAppointments.DataSource = dt;
 
-                // ステータスごとに行の色を変更
-                for (int i = 0; i < dgvAppointments.Rows.Count; i++)
+                // 列幅設定
+                dgvAppointments.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+                if (dgvAppointments.Columns.Count > 0)
                 {
-                    if (i >= _appointments.Count) break;
-                    dgvAppointments.Rows[i].DefaultCellStyle.BackColor = _appointments[i].ResponseStatus switch
+                    dgvAppointments.Columns[0].Width = 110;
+                    dgvAppointments.Columns[0].Frozen = true;
+                    dgvAppointments.Columns[1].Width = 88;
+                    dgvAppointments.Columns[1].Frozen = true;
+
+                    for (int c = 2; c < dgvAppointments.Columns.Count; c++)
                     {
-                        3 => RowAccepted,    // 承認
-                        1 => RowOrganizer,   // 主催者
-                        2 => RowTentative,   // 任意
-                        4 => RowDeclined,    // 辞退
-                        _ => Color.White
-                    };
+                        dgvAppointments.Columns[c].Width = 72;
+                        dgvAppointments.Columns[c].DefaultCellStyle.Font = new Font("Segoe UI", 7.5F);
+                        dgvAppointments.Columns[c].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    }
                 }
 
-                Log($"DataGridView バインド完了: {dt.Rows.Count}行");
+                // セル色・ツールチップ適用
+                string prevUser = "";
+                bool altUser = false;
+                for (int r = 0; r < dgvAppointments.Rows.Count; r++)
+                {
+                    var currentUser = dgvAppointments.Rows[r].Cells[0].Value?.ToString() ?? "";
+                    if (currentUser != prevUser)
+                    {
+                        altUser = !altUser;
+                        prevUser = currentUser;
+                    }
+
+                    // ユーザー・日付列の背景（ユーザー交互色）
+                    var baseBg = altUser ? Color.FromArgb(250, 250, 252) : Color.White;
+                    dgvAppointments.Rows[r].Cells[0].Style.BackColor = baseBg;
+                    dgvAppointments.Rows[r].Cells[1].Style.BackColor = baseBg;
+
+                    for (int c = 2; c < dgvAppointments.Columns.Count; c++)
+                    {
+                        var cell = dgvAppointments.Rows[r].Cells[c];
+
+                        if (_timelineCells.TryGetValue((r, c), out var apt) && apt != null)
+                        {
+                            cell.Style.BackColor = apt.ResponseStatus switch
+                            {
+                                3 => RowAccepted,
+                                1 => RowOrganizer,
+                                2 => RowTentative,
+                                4 => RowDeclined,
+                                _ => Color.White
+                            };
+                            cell.ToolTipText = $"{apt.Subject}\n{apt.Start:HH:mm} \u2013 {apt.End:HH:mm}\n{apt.Status} / {apt.Organizer}";
+                        }
+                        else
+                        {
+                            int si = c - 2;
+                            if (si < slots.Count && _config.IsBreakSlot(slots[si]))
+                            {
+                                cell.Style.BackColor = BreakBg;
+                            }
+                        }
+                    }
+                }
+
+                Log($"タイムライングリッド バインド完了: {dt.Rows.Count}行, {slots.Count}タイムスロット");
             }
             catch (Exception ex)
             {
-                LogError("DataGridView のバインドに失敗しました", ex);
+                LogError("タイムライングリッドのバインドに失敗しました", ex);
             }
+        }
+
+        private static string TruncateText(string text, int maxLength)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            return text.Length <= maxLength ? text : text[..(maxLength - 1)] + "\u2026";
         }
 
         #endregion
