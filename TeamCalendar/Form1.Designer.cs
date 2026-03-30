@@ -30,6 +30,15 @@
         {
             pnlHeader = new Panel();
             lblTitle = new Label();
+            menuStrip = new MenuStrip();
+            mnuFile = new ToolStripMenuItem();
+            mnuFileExport = new ToolStripMenuItem();
+            mnuFileSep1 = new ToolStripSeparator();
+            mnuFileExit = new ToolStripMenuItem();
+            mnuHelp = new ToolStripMenuItem();
+            mnuHelpUsage = new ToolStripMenuItem();
+            mnuHelpSep1 = new ToolStripSeparator();
+            mnuHelpAbout = new ToolStripMenuItem();
             pnlToolbar = new Panel();
             lblStartDate = new Label();
             dtpStart = new DateTimePicker();
@@ -97,6 +106,67 @@
             pnlToolbar.Location = new Point(0, 52);
             pnlToolbar.Padding = new Padding(20, 0, 20, 0);
             pnlToolbar.Size = new Size(1100, 56);
+
+            //
+            // menuStrip
+            //
+            menuStrip.BackColor = Color.FromArgb(0, 110, 200);
+            menuStrip.Font = new Font("Segoe UI", 9F);
+            menuStrip.ForeColor = Color.White;
+            menuStrip.Items.AddRange(new ToolStripItem[] { mnuFile, mnuHelp });
+            menuStrip.Location = new Point(0, 52);
+            menuStrip.Padding = new Padding(8, 2, 0, 2);
+            menuStrip.Size = new Size(1100, 24);
+            menuStrip.Renderer = new MenuStripRenderer();
+
+            //
+            // mnuFile
+            //
+            mnuFile.DropDownItems.AddRange(new ToolStripItem[] { mnuFileExport, mnuFileSep1, mnuFileExit });
+            mnuFile.ForeColor = Color.White;
+            mnuFile.Text = "ファイル(&F)";
+
+            //
+            // mnuFileExport
+            //
+            mnuFileExport.Text = "📊  Excel出力 (承認済み)(&E)";
+            mnuFileExport.ShortcutKeys = Keys.Control | Keys.E;
+            mnuFileExport.Click += btnExport_Click;
+
+            //
+            // mnuFileSep1
+            //
+
+            //
+            // mnuFileExit
+            //
+            mnuFileExit.Text = "終了(&X)";
+            mnuFileExit.ShortcutKeys = Keys.Alt | Keys.F4;
+            mnuFileExit.Click += (s, e) => Close();
+
+            //
+            // mnuHelp
+            //
+            mnuHelp.DropDownItems.AddRange(new ToolStripItem[] { mnuHelpUsage, mnuHelpSep1, mnuHelpAbout });
+            mnuHelp.ForeColor = Color.White;
+            mnuHelp.Text = "ヘルプ(&H)";
+
+            //
+            // mnuHelpUsage
+            //
+            mnuHelpUsage.Text = "📖  使い方(&U)";
+            mnuHelpUsage.ShortcutKeys = Keys.F1;
+            mnuHelpUsage.Click += mnuHelpUsage_Click;
+
+            //
+            // mnuHelpSep1
+            //
+
+            //
+            // mnuHelpAbout
+            //
+            mnuHelpAbout.Text = "ℹ️  バージョン情報(&A)";
+            mnuHelpAbout.Click += mnuHelpAbout_Click;
 
             //
             // lblStartDate
@@ -333,9 +403,11 @@
             Controls.Add(pnlSummary);
             Controls.Add(pnlUserInput);
             Controls.Add(pnlToolbar);
+            Controls.Add(menuStrip);
             Controls.Add(pnlHeader);
             Controls.Add(statusStrip);
             Font = new Font("Segoe UI", 9F);
+            MainMenuStrip = menuStrip;
             MinimumSize = new Size(900, 600);
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Team Calendar";
@@ -363,6 +435,15 @@
 
         private Panel pnlHeader;
         private Label lblTitle;
+        private MenuStrip menuStrip;
+        private ToolStripMenuItem mnuFile;
+        private ToolStripMenuItem mnuFileExport;
+        private ToolStripSeparator mnuFileSep1;
+        private ToolStripMenuItem mnuFileExit;
+        private ToolStripMenuItem mnuHelp;
+        private ToolStripMenuItem mnuHelpUsage;
+        private ToolStripSeparator mnuHelpSep1;
+        private ToolStripMenuItem mnuHelpAbout;
         private Panel pnlToolbar;
         private Label lblStartDate;
         private DateTimePicker dtpStart;

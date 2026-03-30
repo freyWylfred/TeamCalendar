@@ -200,6 +200,55 @@ namespace TeamCalendar
             splitMain.Panel2Collapsed = !chkDebugLog.Checked;
         }
 
+        private void mnuHelpUsage_Click(object? sender, EventArgs e)
+        {
+            var msg = """
+                📅 Team Calendar — 使い方
+
+                1. 「対象ユーザー」にメールアドレスを ; 区切りで入力
+                   （空欄で「自分の予定を含める」のみでも OK）
+
+                2. 期間を選択して「▶ 予定を取得」をクリック
+
+                3. 一覧に会議が表示されます
+                   ・承認 / 主催 → 緑・青
+                   ・任意 (仮)   → 黄
+                   ・辞退        → 赤
+
+                4. 「📊 Excel出力」で承認済み会議を xlsx に出力
+
+                5. グラフで曜日別の会議/空き時間を確認
+                   ・「⏳ 任意も含める」で仮予定を含めた集計も可能
+
+                ショートカット:
+                  Ctrl+E … Excel 出力
+                  F1     … この画面
+                """;
+            MessageBox.Show(msg.Replace("    ", ""), "使い方",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void mnuHelpAbout_Click(object? sender, EventArgs e)
+        {
+            var version = typeof(Form1).Assembly.GetName().Version;
+            var msg = $"""
+                📅 Team Calendar
+
+                バージョン:  {version?.ToString(3) ?? "1.0.0"}
+                フレームワーク:  {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}
+                ランタイム:  {Environment.Version}
+
+                © 2025 freyWylfred
+                ライセンス:  MIT License
+
+                Outlook の予定表から会議情報を取得し、
+                承認状況の一覧表示・Excel 出力・
+                曜日別グラフ分析ができるツールです。
+                """;
+            MessageBox.Show(msg.Replace("    ", ""), "バージョン情報",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         #endregion
 
         #region ログ
@@ -1208,5 +1257,53 @@ namespace TeamCalendar
     public record DayOfWeekStats(DayOfWeek Day, double MeetingMinutes, double WorkMinutes)
     {
         public double FreeMinutes => Math.Max(0, WorkMinutes - MeetingMinutes);
+    }
+
+    /// <summary>
+    /// メニューバーをヘッダー配色に合わせるカスタムレンダラー
+    /// </summary>
+    internal sealed class MenuStripRenderer : ToolStripProfessionalRenderer
+    {
+        private static readonly Color MenuBg = Color.FromArgb(0, 110, 200);
+        private static readonly Color MenuHover = Color.FromArgb(0, 90, 170);
+        private static readonly Color DropBg = Color.White;
+        private static readonly Color DropHover = Color.FromArgb(230, 240, 250);
+
+        protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+        {
+            var g = e.Graphics;
+            var rect = new Rectangle(Point.Empty, e.Item.Size);
+
+            if (e.Item.Owner is MenuStrip)
+            {
+                g.FillRectangle(new SolidBrush(e.Item.Selected ? MenuHover : MenuBg), rect);
+            }
+            else
+            {
+                g.FillRectangle(new SolidBrush(e.Item.Selected ? DropHover : DropBg), rect);
+            }
+        }
+
+        protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
+        {
+            if (e.ToolStrip is MenuStrip)
+                e.Graphics.FillRectangle(new SolidBrush(MenuBg), e.AffectedBounds);
+            else
+                e.Graphics.FillRectangle(new SolidBrush(DropBg), e.AffectedBounds);
+        }
+
+        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+        {
+            if (e.ToolStrip is not MenuStrip)
+                base.OnRenderToolStripBorder(e);
+        }
+
+        protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
+        {
+            var rect = new Rectangle(Point.Empty, e.Item.Size);
+            var y = rect.Height / 2;
+            using var pen = new Pen(Color.FromArgb(220, 220, 220));
+            e.Graphics.DrawLine(pen, rect.Left + 4, y, rect.Right - 4, y);
+        }
     }
 }
