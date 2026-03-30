@@ -3,6 +3,30 @@
 このプロジェクトのすべての注目すべき変更はこのファイルに記録されます。  
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.0.0/) に準拠しています。
 
+## [1.4.0] - 2025-07-25
+
+### Changed
+- **デザイン全面リニューアル** — "Nordic Slate" テーマ
+  - ヘッダーを Slate-800→900 グラデーションに変更（高級感のある深いネイビー）
+  - アクセントカラーを Indigo-500 (#6366F1) に統一（モダンな紫青）
+  - ボタン: Load = Indigo-500, Export = Emerald-600（視認性と統一感）
+  - テキスト・ラベルを Slate-500/800 系に統一（目に優しい配色）
+  - 背景を Slate-100、カードエリアを Slate-50 に変更（3層の奥行き）
+  - サマリーカードに Slate-200 ボーダー + 全高アクセントバーを追加
+  - グラフカードにボーダー追加、バー色を Indigo/Emerald に統一
+  - タイムライン行色を Emerald-50/Indigo-50/Amber-50/Red-50 のパステルに
+  - MenuStripRenderer を Slate-700 ダークテーマに更新
+
+### Fixed
+- **例外処理の強化**
+  - Form1 コンストラクタ: 設定ファイル読込失敗時に既定値へフォールバック
+  - LoadAppIcon: 破損アイコンファイルでのクラッシュ防止
+  - ApplyModernTheme: リフレクション呼び出しの保護
+  - PaintChart: GDI+ 描画中の例外でクラッシュしないよう try-catch 追加
+  - CellDoubleClick / chkIncludeTentative: イベントハンドラの保護
+  - WorkScheduleConfig.Load / CreateDefaultIfMissing: ファイル I/O の例外処理
+  - MenuStripRenderer: SolidBrush の using 漏れ（GDI+ リソースリーク）を修正
+
 ## [1.3.0] - 2025-07-24
 
 ### Changed

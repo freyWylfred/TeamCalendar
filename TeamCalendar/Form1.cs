@@ -22,22 +22,36 @@ namespace TeamCalendar
 
         #region テーマカラー
 
-        private static readonly Color Accent = Color.FromArgb(0, 120, 212);
-        private static readonly Color Success = Color.FromArgb(16, 124, 16);
-        private static readonly Color Warning = Color.FromArgb(255, 170, 0);
-        private static readonly Color Danger = Color.FromArgb(209, 52, 56);
-        private static readonly Color Surface = Color.FromArgb(243, 243, 243);
-        private static readonly Color TextSecondary = Color.FromArgb(96, 96, 96);
+        // ── Brand / Accent ──
+        private static readonly Color Accent = Color.FromArgb(99, 102, 241);        // Indigo-500
+        private static readonly Color AccentHover = Color.FromArgb(79, 70, 229);     // Indigo-600
+        private static readonly Color AccentPressed = Color.FromArgb(67, 56, 202);   // Indigo-700
+        private static readonly Color Success = Color.FromArgb(5, 150, 105);         // Emerald-600
+        private static readonly Color Warning = Color.FromArgb(217, 119, 6);         // Amber-600
+        private static readonly Color Danger = Color.FromArgb(220, 38, 38);          // Red-600
 
-        private static readonly Color RowAccepted = Color.FromArgb(223, 246, 221);
-        private static readonly Color RowOrganizer = Color.FromArgb(208, 228, 245);
-        private static readonly Color RowTentative = Color.FromArgb(255, 244, 206);
-        private static readonly Color RowDeclined = Color.FromArgb(253, 231, 233);
+        // ── Surfaces ──
+        private static readonly Color Surface = Color.FromArgb(248, 250, 252);       // Slate-50
+        private static readonly Color SurfaceAlt = Color.FromArgb(241, 245, 249);    // Slate-100
+        private static readonly Color HeaderBg = Color.FromArgb(30, 41, 59);         // Slate-800
+        private static readonly Color HeaderBgDeep = Color.FromArgb(15, 23, 42);     // Slate-900
+        private static readonly Color BorderColor = Color.FromArgb(226, 232, 240);   // Slate-200
 
-        private static readonly Color GridHeaderBg = Color.FromArgb(246, 248, 250);
-        private static readonly Color GridHeaderFg = Color.FromArgb(60, 60, 60);
-        private static readonly Color GridSelection = Color.FromArgb(210, 232, 255);
-        private static readonly Color BreakBg = Color.FromArgb(235, 235, 232);
+        // ── Text ──
+        private static readonly Color TextPrimary = Color.FromArgb(30, 41, 59);      // Slate-800
+        private static readonly Color TextSecondary = Color.FromArgb(100, 116, 139); // Slate-500
+
+        // ── Timeline rows ──
+        private static readonly Color RowAccepted = Color.FromArgb(236, 253, 245);   // Emerald-50
+        private static readonly Color RowOrganizer = Color.FromArgb(238, 242, 255);  // Indigo-50
+        private static readonly Color RowTentative = Color.FromArgb(255, 251, 235);  // Amber-50
+        private static readonly Color RowDeclined = Color.FromArgb(254, 242, 242);   // Red-50
+
+        // ── Grid ──
+        private static readonly Color GridHeaderBg = Color.FromArgb(241, 245, 249);  // Slate-100
+        private static readonly Color GridHeaderFg = Color.FromArgb(51, 65, 85);     // Slate-700
+        private static readonly Color GridSelection = Color.FromArgb(224, 231, 255); // Indigo-100
+        private static readonly Color BreakBg = Color.FromArgb(241, 245, 249);       // Slate-100
 
         #endregion
 
@@ -47,11 +61,19 @@ namespace TeamCalendar
             ApplyModernTheme();
             LoadAppIcon();
 
-            var configDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
-            var configPath = Path.Combine(configDir, "config.ini");
-            WorkScheduleConfig.CreateDefaultIfMissing(configPath);
-            _config = WorkScheduleConfig.Load(configPath);
-            Log($"設定読込: 勤務 {_config.StartTime:hh\\:mm}-{_config.EndTime:hh\\:mm}, 休憩 {_config.BreakStartTime:hh\\:mm}-{_config.BreakEndTime:hh\\:mm}, 間隔 {_config.SlotMinutes}分");
+            try
+            {
+                var configDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+                var configPath = Path.Combine(configDir, "config.ini");
+                WorkScheduleConfig.CreateDefaultIfMissing(configPath);
+                _config = WorkScheduleConfig.Load(configPath);
+                Log($"設定読込: 勤務 {_config.StartTime:hh\\:mm}-{_config.EndTime:hh\\:mm}, 休憩 {_config.BreakStartTime:hh\\:mm}-{_config.BreakEndTime:hh\\:mm}, 間隔 {_config.SlotMinutes}分");
+            }
+            catch (Exception ex)
+            {
+                _config = new WorkScheduleConfig();
+                Debug.WriteLine($"[WARN] 設定ファイルの読込に失敗しました。既定値を使用します: {ex.Message}");
+            }
 
             dtpStart.Value = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek + 1);
             dtpEnd.Value = dtpStart.Value.AddDays(4);
@@ -60,22 +82,45 @@ namespace TeamCalendar
 
         private void LoadAppIcon()
         {
-            var icoPath = Path.Combine(
-                Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory,
-                "app.ico");
-            if (File.Exists(icoPath))
-                Icon = new Icon(icoPath);
+            try
+            {
+                var icoPath = Path.Combine(
+                    Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory,
+                    "app.ico");
+                if (File.Exists(icoPath))
+                    Icon = new Icon(icoPath);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WARN] アイコンの読込に失敗しました: {ex.Message}");
+            }
         }
 
         #region テーマ適用
 
         private void ApplyModernTheme()
         {
+            // ヘッダーグラデーション
+            pnlHeader.Paint += (s, e) =>
+            {
+                var r = pnlHeader.ClientRectangle;
+                if (r.Width <= 0 || r.Height <= 0) return;
+                using var brush = new LinearGradientBrush(r, HeaderBg, HeaderBgDeep, LinearGradientMode.Horizontal);
+                e.Graphics.FillRectangle(brush, r);
+            };
+
             // ツールバー下線
             pnlToolbar.Paint += (s, e) =>
             {
-                using var pen = new Pen(Color.FromArgb(230, 230, 230), 1);
+                using var pen = new Pen(BorderColor, 1);
                 e.Graphics.DrawLine(pen, 0, pnlToolbar.Height - 1, pnlToolbar.Width, pnlToolbar.Height - 1);
+            };
+
+            // ユーザー入力パネル下線
+            pnlUserInput.Paint += (s, e) =>
+            {
+                using var pen = new Pen(BorderColor, 1);
+                e.Graphics.DrawLine(pen, 0, pnlUserInput.Height - 1, pnlUserInput.Width, pnlUserInput.Height - 1);
             };
 
             // DataGridView ヘッダースタイル
@@ -90,20 +135,27 @@ namespace TeamCalendar
             // DataGridView セルスタイル
             var cellStyle = dgvAppointments.DefaultCellStyle;
             cellStyle.Font = new Font("Segoe UI", 9F);
-            cellStyle.ForeColor = Color.FromArgb(30, 30, 30);
+            cellStyle.ForeColor = TextPrimary;
             cellStyle.SelectionBackColor = GridSelection;
-            cellStyle.SelectionForeColor = Color.FromArgb(30, 30, 30);
+            cellStyle.SelectionForeColor = TextPrimary;
             cellStyle.Padding = new Padding(8, 0, 0, 0);
 
-            dgvAppointments.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 250, 252);
+            dgvAppointments.AlternatingRowsDefaultCellStyle.BackColor = Surface;
 
             // サマリーカード生成
             InitializeSummaryCards();
 
             // グラフパネルの設定
-            typeof(Panel).InvokeMember("DoubleBuffered",
-                BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
-                null, pnlChart, [true]);
+            try
+            {
+                typeof(Panel).InvokeMember("DoubleBuffered",
+                    BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
+                    null, pnlChart, [true]);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[WARN] DoubleBuffered の設定に失敗: {ex.Message}");
+            }
             pnlChart.Paint += PaintChart;
         }
 
@@ -136,26 +188,28 @@ namespace TeamCalendar
         {
             var card = new Panel
             {
-                Size = new Size(180, 70),
-                Margin = new Padding(6, 0, 6, 0),
+                Size = new Size(190, 70),
+                Margin = new Padding(8, 0, 8, 0),
                 BackColor = Color.White,
             };
 
-            // 左のアクセントバーを描画
+            // カード描画: ボーダー + 左アクセントバー
             card.Paint += (s, e) =>
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var borderPen = new Pen(Color.FromArgb(226, 232, 240), 1);
+                g.DrawRectangle(borderPen, 0, 0, card.Width - 1, card.Height - 1);
                 using var brush = new SolidBrush(accentColor);
-                g.FillRectangle(brush, 0, 8, 3, card.Height - 16);
+                g.FillRectangle(brush, 0, 0, 4, card.Height);
             };
 
             var lblTitle = new Label
             {
                 AutoSize = true,
-                Font = new Font("Segoe UI", 8F),
-                ForeColor = Color.FromArgb(110, 110, 110),
-                Location = new Point(14, 8),
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                Location = new Point(16, 10),
                 Text = $"{icon}  {title}",
             };
 
@@ -164,7 +218,7 @@ namespace TeamCalendar
                 AutoSize = true,
                 Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 ForeColor = accentColor,
-                Location = new Point(14, 26),
+                Location = new Point(16, 30),
                 Text = "—",
             };
 
@@ -753,46 +807,53 @@ namespace TeamCalendar
 
         private void dgvAppointments_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 1) return;
+            try
+            {
+                if (e.RowIndex < 0 || e.ColumnIndex < 1) return;
 
-            if (!_timelineCells.TryGetValue((e.RowIndex, e.ColumnIndex), out var apt) || apt is null)
-                return;
+                if (!_timelineCells.TryGetValue((e.RowIndex, e.ColumnIndex), out var apt) || apt is null)
+                    return;
 
-            // 同じセルに複数の予定がある場合はすべて表示
-            var slots = _config.GenerateTimeSlots();
-            if (e.RowIndex >= slots.Count) return;
+                // 同じセルに複数の予定がある場合はすべて表示
+                var slots = _config.GenerateTimeSlots();
+                if (e.RowIndex >= slots.Count) return;
 
-            var startDate = dtpStart.Value.Date;
-            var dates = new List<DateTime>();
-            for (var d = startDate; d <= dtpEnd.Value.Date; d = d.AddDays(1))
-                if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
-                    dates.Add(d);
+                var startDate = dtpStart.Value.Date;
+                var dates = new List<DateTime>();
+                for (var d = startDate; d <= dtpEnd.Value.Date; d = d.AddDays(1))
+                    if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
+                        dates.Add(d);
 
-            int di = e.ColumnIndex - 1;
-            if (di >= dates.Count) return;
+                int di = e.ColumnIndex - 1;
+                if (di >= dates.Count) return;
 
-            var date = dates[di];
-            var slotStart = date.Add(slots[e.RowIndex]);
-            var slotEnd = slotStart.AddMinutes(_config.SlotMinutes);
+                var date = dates[di];
+                var slotStart = date.Add(slots[e.RowIndex]);
+                var slotEnd = slotStart.AddMinutes(_config.SlotMinutes);
 
-            var slotAppts = _appointments
-                .Where(a => a.Start < slotEnd && a.End > slotStart)
-                .OrderBy(a => a.Start)
-                .ToList();
+                var slotAppts = _appointments
+                    .Where(a => a.Start < slotEnd && a.End > slotStart)
+                    .OrderBy(a => a.Start)
+                    .ToList();
 
-            if (slotAppts.Count == 0) return;
+                if (slotAppts.Count == 0) return;
 
-            var details = string.Join("\n─────────────────────────\n",
-                slotAppts.Select(a =>
-                    $"📌 {a.Subject}\n" +
-                    $"  時間:  {a.Start:yyyy/MM/dd HH:mm} – {a.End:HH:mm} ({a.Duration}分)\n" +
-                    $"  主催者:  {a.Organizer}\n" +
-                    $"  場所:  {(string.IsNullOrEmpty(a.Location) ? "—" : a.Location)}\n" +
-                    $"  状態:  {a.Status}\n" +
-                    $"  対象:  {a.Owner}"));
+                var details = string.Join("\n─────────────────────────\n",
+                    slotAppts.Select(a =>
+                        $"📌 {a.Subject}\n" +
+                        $"  時間:  {a.Start:yyyy/MM/dd HH:mm} – {a.End:HH:mm} ({a.Duration}分)\n" +
+                        $"  主催者:  {a.Organizer}\n" +
+                        $"  場所:  {(string.IsNullOrEmpty(a.Location) ? "—" : a.Location)}\n" +
+                        $"  状態:  {a.Status}\n" +
+                        $"  対象:  {a.Owner}"));
 
-            var title = $"会議詳細 — {date:M/dd(ddd)} {slots[e.RowIndex]:hh\\:mm}";
-            MessageBox.Show(details, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                var title = $"会議詳細 — {date:M/dd(ddd)} {slots[e.RowIndex]:hh\\:mm}";
+                MessageBox.Show(details, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                LogError("会議詳細の表示に失敗しました", ex);
+            }
         }
 
         private static string TruncateText(string text, int maxLength)
@@ -808,8 +869,15 @@ namespace TeamCalendar
         private void chkIncludeTentative_CheckedChanged(object? sender, EventArgs e)
         {
             if (_appointments.Count == 0) return;
-            CalculateDayStats();
-            pnlChart.Invalidate();
+            try
+            {
+                CalculateDayStats();
+                pnlChart.Invalidate();
+            }
+            catch (Exception ex)
+            {
+                LogError("グラフデータの再計算に失敗しました", ex);
+            }
         }
 
         private void CalculateDayStats()
@@ -913,17 +981,31 @@ namespace TeamCalendar
 
         private void PaintChart(object? sender, PaintEventArgs e)
         {
+            if (sender is not Panel panel) return;
+            try
+            {
+                PaintChartCore(panel, e);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ERROR] グラフ描画エラー: {ex.Message}");
+            }
+        }
+
+        private void PaintChartCore(Panel panel, PaintEventArgs e)
+        {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            var panel = (Panel)sender!;
             var rect = panel.ClientRectangle;
 
-            // カード風の白背景
+            // カード風の白背景 + ボーダー
             var cardRect = new Rectangle(16, 0, rect.Width - 32, rect.Height - 8);
             using (var bgBrush = new SolidBrush(Color.White))
                 g.FillRectangle(bgBrush, cardRect);
+            using (var cardBorderPen = new Pen(BorderColor, 1))
+                g.DrawRectangle(cardBorderPen, cardRect);
 
             if (_dayStats.Count == 0)
             {
@@ -955,16 +1037,16 @@ namespace TeamCalendar
                 ? "\U0001f4ca  曜日別  会議時間 / 空き時間（任意含む）"
                 : "\U0001f4ca  曜日別  会議時間 / 空き時間";
             using (var titleFont = new Font("Segoe UI", 10F, FontStyle.Bold))
-            using (var titleBrush = new SolidBrush(Color.FromArgb(40, 40, 40)))
+            using (var titleBrush = new SolidBrush(TextPrimary))
                 g.DrawString(chartTitle, titleFont, titleBrush, cardRect.Left + 14, cardRect.Top + 8);
 
             // Y軸スケール
             double maxHours = Math.Ceiling(_dayStats.Max(s => s.WorkMinutes) / 60.0);
             if (maxHours < 1) maxHours = 1;
 
-            using var gridPen = new Pen(Color.FromArgb(238, 238, 238), 1);
+            using var gridPen = new Pen(SurfaceAlt, 1);
             using var axisFont = new Font("Segoe UI", 7.5F);
-            using var axisBrush = new SolidBrush(Color.FromArgb(130, 130, 130));
+            using var axisBrush = new SolidBrush(Color.FromArgb(148, 163, 184));
 
             int ySteps = (int)maxHours;
             for (int h = 0; h <= ySteps; h++)
@@ -977,8 +1059,8 @@ namespace TeamCalendar
             }
 
             // バー描画
-            var meetingColor = Color.FromArgb(0, 120, 212);
-            var freeColor = Color.FromArgb(195, 230, 195);
+            var meetingColor = Accent;
+            var freeColor = Color.FromArgb(167, 243, 208);
 
             float barAreaWidth = (float)chartWidth / _dayStats.Count;
             float barWidth = Math.Min(barAreaWidth * 0.55f, 80);
@@ -989,9 +1071,9 @@ namespace TeamCalendar
             using var barLabelFont = new Font("Segoe UI", 7.5F, FontStyle.Bold);
             using var dayFont = new Font("Segoe UI", 9.5F, FontStyle.Bold);
             using var whiteBrush = new SolidBrush(Color.White);
-            using var greenLabelBrush = new SolidBrush(Color.FromArgb(50, 110, 50));
-            using var darkBrush = new SolidBrush(Color.FromArgb(60, 60, 60));
-            using var pctBrush = new SolidBrush(Color.FromArgb(90, 90, 90));
+            using var greenLabelBrush = new SolidBrush(Color.FromArgb(4, 120, 87));
+            using var darkBrush = new SolidBrush(TextPrimary);
+            using var pctBrush = new SolidBrush(TextSecondary);
 
             for (int i = 0; i < _dayStats.Count; i++)
             {
@@ -1048,7 +1130,7 @@ namespace TeamCalendar
             }
 
             // X軸線
-            using var axisPen = new Pen(Color.FromArgb(210, 210, 210), 1);
+            using var axisPen = new Pen(BorderColor, 1);
             g.DrawLine(axisPen, chartLeft, chartBottom, chartRight, chartBottom);
 
             // 凡例
@@ -1056,7 +1138,7 @@ namespace TeamCalendar
             float legendX = chartLeft;
 
             using var legendFont = new Font("Segoe UI", 8F);
-            using var legendTextBrush = new SolidBrush(Color.FromArgb(90, 90, 90));
+            using var legendTextBrush = new SolidBrush(TextSecondary);
 
             g.FillRectangle(meetBrush, legendX, legendY + 3, 14, 14);
             g.DrawString("会議時間", legendFont, legendTextBrush, legendX + 18, legendY + 2);
@@ -1283,10 +1365,10 @@ namespace TeamCalendar
     /// </summary>
     internal sealed class MenuStripRenderer : ToolStripProfessionalRenderer
     {
-        private static readonly Color MenuBg = Color.FromArgb(0, 110, 200);
-        private static readonly Color MenuHover = Color.FromArgb(0, 90, 170);
+        private static readonly Color MenuBg = Color.FromArgb(51, 65, 85);
+        private static readonly Color MenuHover = Color.FromArgb(71, 85, 105);
         private static readonly Color DropBg = Color.White;
-        private static readonly Color DropHover = Color.FromArgb(230, 240, 250);
+        private static readonly Color DropHover = Color.FromArgb(241, 245, 249);
 
         protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
         {
@@ -1295,20 +1377,28 @@ namespace TeamCalendar
 
             if (e.Item.Owner is MenuStrip)
             {
-                g.FillRectangle(new SolidBrush(e.Item.Selected ? MenuHover : MenuBg), rect);
+                using var brush = new SolidBrush(e.Item.Selected ? MenuHover : MenuBg);
+                g.FillRectangle(brush, rect);
             }
             else
             {
-                g.FillRectangle(new SolidBrush(e.Item.Selected ? DropHover : DropBg), rect);
+                using var brush = new SolidBrush(e.Item.Selected ? DropHover : DropBg);
+                g.FillRectangle(brush, rect);
             }
         }
 
         protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
         {
             if (e.ToolStrip is MenuStrip)
-                e.Graphics.FillRectangle(new SolidBrush(MenuBg), e.AffectedBounds);
+            {
+                using var brush = new SolidBrush(MenuBg);
+                e.Graphics.FillRectangle(brush, e.AffectedBounds);
+            }
             else
-                e.Graphics.FillRectangle(new SolidBrush(DropBg), e.AffectedBounds);
+            {
+                using var brush = new SolidBrush(DropBg);
+                e.Graphics.FillRectangle(brush, e.AffectedBounds);
+            }
         }
 
         protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)

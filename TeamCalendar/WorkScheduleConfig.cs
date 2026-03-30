@@ -27,7 +27,18 @@ namespace TeamCalendar
             var config = new WorkScheduleConfig();
             if (!File.Exists(path)) return config;
 
-            foreach (var line in File.ReadAllLines(path))
+            string[] lines;
+            try
+            {
+                lines = File.ReadAllLines(path);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WARN] 設定ファイルの読み取りに失敗しました ({path}): {ex.Message}");
+                return config;
+            }
+
+            foreach (var line in lines)
             {
                 var trimmed = line.Trim();
                 if (string.IsNullOrEmpty(trimmed) || trimmed[0] is '[' or ';' or '#')
@@ -56,21 +67,28 @@ namespace TeamCalendar
         {
             if (File.Exists(path)) return;
 
-            File.WriteAllText(path, """
-                [WorkSchedule]
-                ; 勤務開始時刻
-                StartTime=08:30
-                ; 勤務終了時刻
-                EndTime=17:00
+            try
+            {
+                File.WriteAllText(path, """
+                    [WorkSchedule]
+                    ; 勤務開始時刻
+                    StartTime=08:30
+                    ; 勤務終了時刻
+                    EndTime=17:00
 
-                ; 休憩開始時刻
-                BreakStartTime=12:30
-                ; 休憩終了時刻
-                BreakEndTime=13:30
+                    ; 休憩開始時刻
+                    BreakStartTime=12:30
+                    ; 休憩終了時刻
+                    BreakEndTime=13:30
 
-                ; タイムラインの時間間隔 (分)
-                SlotMinutes=30
-                """);
+                    ; タイムラインの時間間隔 (分)
+                    SlotMinutes=30
+                    """);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WARN] 既定設定ファイルの作成に失敗しました ({path}): {ex.Message}");
+            }
         }
     }
 }

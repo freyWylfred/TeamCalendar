@@ -76,7 +76,7 @@
             //
             // pnlHeader
             //
-            pnlHeader.BackColor = Color.FromArgb(0, 120, 212);
+            pnlHeader.BackColor = Color.FromArgb(30, 41, 59);
             pnlHeader.Controls.Add(lblTitle);
             pnlHeader.Dock = DockStyle.Top;
             pnlHeader.Location = new Point(0, 0);
@@ -86,6 +86,7 @@
             // lblTitle
             //
             lblTitle.AutoSize = true;
+            lblTitle.BackColor = Color.Transparent;
             lblTitle.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
             lblTitle.ForeColor = Color.White;
             lblTitle.Location = new Point(20, 12);
@@ -110,7 +111,7 @@
             //
             // menuStrip
             //
-            menuStrip.BackColor = Color.FromArgb(0, 110, 200);
+            menuStrip.BackColor = Color.FromArgb(51, 65, 85);
             menuStrip.Font = new Font("Segoe UI", 9F);
             menuStrip.ForeColor = Color.White;
             menuStrip.Items.AddRange(new ToolStripItem[] { mnuFile, mnuHelp });
@@ -173,7 +174,7 @@
             //
             lblStartDate.AutoSize = true;
             lblStartDate.Font = new Font("Segoe UI", 9F);
-            lblStartDate.ForeColor = Color.FromArgb(96, 96, 96);
+            lblStartDate.ForeColor = Color.FromArgb(100, 116, 139);
             lblStartDate.Location = new Point(20, 19);
             lblStartDate.Text = "期間";
 
@@ -191,7 +192,7 @@
             //
             lblDateSeparator.AutoSize = true;
             lblDateSeparator.Font = new Font("Segoe UI", 10F);
-            lblDateSeparator.ForeColor = Color.FromArgb(96, 96, 96);
+            lblDateSeparator.ForeColor = Color.FromArgb(100, 116, 139);
             lblDateSeparator.Location = new Point(194, 18);
             lblDateSeparator.Text = "〜";
 
@@ -207,11 +208,11 @@
             //
             // btnLoad
             //
-            btnLoad.BackColor = Color.FromArgb(0, 120, 212);
+            btnLoad.BackColor = Color.FromArgb(99, 102, 241);
             btnLoad.Cursor = Cursors.Hand;
             btnLoad.FlatAppearance.BorderSize = 0;
-            btnLoad.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 90, 158);
-            btnLoad.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 69, 120);
+            btnLoad.FlatAppearance.MouseOverBackColor = Color.FromArgb(79, 70, 229);
+            btnLoad.FlatAppearance.MouseDownBackColor = Color.FromArgb(67, 56, 202);
             btnLoad.FlatStyle = FlatStyle.Flat;
             btnLoad.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             btnLoad.ForeColor = Color.White;
@@ -224,11 +225,11 @@
             //
             // btnExport
             //
-            btnExport.BackColor = Color.FromArgb(16, 124, 16);
+            btnExport.BackColor = Color.FromArgb(5, 150, 105);
             btnExport.Cursor = Cursors.Hand;
             btnExport.FlatAppearance.BorderSize = 0;
-            btnExport.FlatAppearance.MouseOverBackColor = Color.FromArgb(12, 100, 12);
-            btnExport.FlatAppearance.MouseDownBackColor = Color.FromArgb(8, 76, 8);
+            btnExport.FlatAppearance.MouseOverBackColor = Color.FromArgb(4, 120, 87);
+            btnExport.FlatAppearance.MouseDownBackColor = Color.FromArgb(6, 95, 70);
             btnExport.FlatStyle = FlatStyle.Flat;
             btnExport.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             btnExport.ForeColor = Color.White;
@@ -243,7 +244,7 @@
             //
             chkDebugLog.AutoSize = true;
             chkDebugLog.Font = new Font("Segoe UI", 8.5F);
-            chkDebugLog.ForeColor = Color.FromArgb(96, 96, 96);
+            chkDebugLog.ForeColor = Color.FromArgb(100, 116, 139);
             chkDebugLog.Location = new Point(710, 19);
             chkDebugLog.Text = "🔍 デバッグログ";
             chkDebugLog.UseVisualStyleBackColor = true;
@@ -266,7 +267,7 @@
             //
             lblUserEmails.AutoSize = true;
             lblUserEmails.Font = new Font("Segoe UI", 9F);
-            lblUserEmails.ForeColor = Color.FromArgb(96, 96, 96);
+            lblUserEmails.ForeColor = Color.FromArgb(100, 116, 139);
             lblUserEmails.Location = new Point(20, 13);
             lblUserEmails.Text = "\U0001f465 対象ユーザー";
 
@@ -285,7 +286,7 @@
             chkIncludeSelf.Checked = true;
             chkIncludeSelf.CheckState = CheckState.Checked;
             chkIncludeSelf.Font = new Font("Segoe UI", 9F);
-            chkIncludeSelf.ForeColor = Color.FromArgb(96, 96, 96);
+            chkIncludeSelf.ForeColor = Color.FromArgb(100, 116, 139);
             chkIncludeSelf.Location = new Point(580, 12);
             chkIncludeSelf.Text = "自分の予定を含める";
             chkIncludeSelf.UseVisualStyleBackColor = true;
@@ -294,7 +295,7 @@
             // pnlSummary
             //
             pnlSummary.AutoSize = false;
-            pnlSummary.BackColor = Color.FromArgb(243, 243, 243);
+            pnlSummary.BackColor = Color.FromArgb(248, 250, 252);
             pnlSummary.Dock = DockStyle.Top;
             pnlSummary.Location = new Point(0, 152);
             pnlSummary.Padding = new Padding(16, 10, 16, 10);
@@ -306,7 +307,7 @@
             //
             chkIncludeTentative.AutoSize = true;
             chkIncludeTentative.Font = new Font("Segoe UI", 8.5F);
-            chkIncludeTentative.ForeColor = Color.FromArgb(96, 96, 96);
+            chkIncludeTentative.ForeColor = Color.FromArgb(100, 116, 139);
             chkIncludeTentative.Location = new Point(340, 8);
             chkIncludeTentative.Text = "⏳ 任意 (仮) も含める";
             chkIncludeTentative.UseVisualStyleBackColor = true;
@@ -316,7 +317,7 @@
             //
             // pnlChart
             //
-            pnlChart.BackColor = Color.FromArgb(243, 243, 243);
+            pnlChart.BackColor = Color.FromArgb(248, 250, 252);
             pnlChart.Controls.Add(chkIncludeTentative);
             pnlChart.Dock = DockStyle.Top;
             pnlChart.Size = new Size(1100, 210);
@@ -324,7 +325,7 @@
             //
             // pnlGridWrapper
             //
-            pnlGridWrapper.BackColor = Color.FromArgb(243, 243, 243);
+            pnlGridWrapper.BackColor = Color.FromArgb(248, 250, 252);
             pnlGridWrapper.Controls.Add(splitMain);
             pnlGridWrapper.Dock = DockStyle.Fill;
             pnlGridWrapper.Padding = new Padding(16, 4, 16, 8);
@@ -356,7 +357,7 @@
             dgvAppointments.ColumnHeadersHeight = 40;
             dgvAppointments.Dock = DockStyle.Fill;
             dgvAppointments.EnableHeadersVisualStyles = false;
-            dgvAppointments.GridColor = Color.FromArgb(235, 235, 235);
+            dgvAppointments.GridColor = Color.FromArgb(226, 232, 240);
             dgvAppointments.ReadOnly = true;
             dgvAppointments.RowHeadersVisible = false;
             dgvAppointments.RowTemplate.Height = 32;
@@ -389,7 +390,7 @@
             // lblStatus
             //
             lblStatus.Font = new Font("Segoe UI", 8.5F);
-            lblStatus.ForeColor = Color.FromArgb(96, 96, 96);
+            lblStatus.ForeColor = Color.FromArgb(100, 116, 139);
             lblStatus.Text = "Outlookの予定を取得するには「▶ 予定を取得」ボタンを押してください";
 
             //
@@ -397,7 +398,7 @@
             //
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = Color.FromArgb(243, 243, 243);
+            BackColor = Color.FromArgb(241, 245, 249);
             ClientSize = new Size(1100, 820);
             Controls.Add(pnlGridWrapper);
             Controls.Add(pnlChart);
