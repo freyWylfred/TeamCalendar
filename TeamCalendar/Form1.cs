@@ -440,6 +440,7 @@ namespace TeamCalendar
                 }
 
                 // 他のユーザーの予定を取得
+                var failedUsers = new List<(string email, string reason)>();
                 foreach (string email in userEmails)
                 {
                     Log($"--- {email} の予定表を取得中 ---");
@@ -452,6 +453,7 @@ namespace TeamCalendar
                         if (!(bool)recipient.Resolved)
                         {
                             Log($"[WARN] ユーザー '{email}' を解決できませんでした。Exchange上に存在しないか、メールアドレスが正しくありません。");
+                            failedUsers.Add((email, "Exchange上でユーザーを解決できませんでした。\nメールアドレスが正しいか、Exchange上に存在するか確認してください。"));
                             continue;
                         }
                         Log($"ユーザー '{email}' の解決に成功");
@@ -466,16 +468,28 @@ namespace TeamCalendar
                     {
                         Log($"[ERROR] '{email}' の予定表にアクセスできません: HRESULT=0x{comEx.HResult:X8} {comEx.Message}");
                         Log("  ※ 相手の予定表が共有されているか、アクセス権限があるか確認してください。");
+                        failedUsers.Add((email, $"HRESULT: 0x{comEx.HResult:X8}\n{comEx.Message}\n※ 相手の予定表が共有されているか、アクセス権限を確認してください。"));
                     }
                     catch (Exception ex)
                     {
                         Log($"[ERROR] '{email}' の予定取得中にエラー: {ex.GetType().Name}: {ex.Message}");
+                        failedUsers.Add((email, $"[{ex.GetType().Name}] {ex.Message}"));
                     }
                     finally
                     {
                         SafeReleaseCom(sharedFolder, $"folder({email})");
                         SafeReleaseCom(recipient, $"recipient({email})");
                     }
+                }
+
+                if (failedUsers.Count > 0)
+                {
+                    var details = string.Join("\n\n", failedUsers.Select(f =>
+                        $"❌ {f.email}\n   {f.reason.Replace("\n", "\n   ")}"));
+                    MessageBox.Show(
+                        $"以下のユーザーの予定を取得できませんでした:\n\n{details}",
+                        $"ユーザー取得エラー ({failedUsers.Count}件)",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
 
                 Log($"全ユーザー列挙完了: 処理={totalProcessed}件, 取得={_appointments.Count}件, スキップ={totalSkipped}件");
@@ -1019,7 +1033,7 @@ namespace TeamCalendar
 
             int leftMargin = 72;
             int rightMargin = 32;
-            int topMargin = 38;
+            int topMargin = 48;
             int bottomMargin = 30;
             int legendHeight = 24;
 
@@ -1118,9 +1132,9 @@ namespace TeamCalendar
                 double pct = stat.WorkMinutes > 0 ? stat.MeetingMinutes / stat.WorkMinutes * 100 : 0;
                 var pctLabel = $"{pct:F0}%";
                 var pctSz = g.MeasureString(pctLabel, barLabelFont);
+                float pctY = Math.Max(chartTop, chartBottom - meetBarH - freeBarH - pctSz.Height - 2);
                 g.DrawString(pctLabel, barLabelFont, pctBrush,
-                    x + (barWidth - pctSz.Width) / 2,
-                    chartBottom - meetBarH - freeBarH - pctSz.Height - 2);
+                    x + (barWidth - pctSz.Width) / 2, pctY);
 
                 // 曜日ラベル
                 var dayName = DayLabel(stat.Day);

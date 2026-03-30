@@ -298,8 +298,8 @@
             pnlSummary.BackColor = Color.FromArgb(248, 250, 252);
             pnlSummary.Dock = DockStyle.Top;
             pnlSummary.Location = new Point(0, 152);
-            pnlSummary.Padding = new Padding(16, 10, 16, 10);
-            pnlSummary.Size = new Size(1100, 90);
+            pnlSummary.Padding = new Padding(16, 4, 16, 2);
+            pnlSummary.Size = new Size(1100, 78);
             pnlSummary.WrapContents = false;
 
             //
@@ -308,7 +308,7 @@
             chkIncludeTentative.AutoSize = true;
             chkIncludeTentative.Font = new Font("Segoe UI", 8.5F);
             chkIncludeTentative.ForeColor = Color.FromArgb(100, 116, 139);
-            chkIncludeTentative.Location = new Point(340, 8);
+            chkIncludeTentative.Location = new Point(340, 6);
             chkIncludeTentative.Text = "⏳ 任意 (仮) も含める";
             chkIncludeTentative.UseVisualStyleBackColor = true;
             chkIncludeTentative.BackColor = Color.White;
@@ -320,7 +320,7 @@
             pnlChart.BackColor = Color.FromArgb(248, 250, 252);
             pnlChart.Controls.Add(chkIncludeTentative);
             pnlChart.Dock = DockStyle.Top;
-            pnlChart.Size = new Size(1100, 210);
+            pnlChart.Size = new Size(1100, 240);
 
             //
             // pnlGridWrapper
