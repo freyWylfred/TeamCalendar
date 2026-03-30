@@ -40,6 +40,7 @@
             chkDebugLog = new CheckBox();
             pnlSummary = new FlowLayoutPanel();
             pnlChart = new Panel();
+            chkIncludeTentative = new CheckBox();
             pnlUserInput = new Panel();
             lblUserEmails = new Label();
             txtUserEmails = new TextBox();
@@ -231,9 +232,22 @@
             pnlSummary.WrapContents = false;
 
             //
+            // chkIncludeTentative
+            //
+            chkIncludeTentative.AutoSize = true;
+            chkIncludeTentative.Font = new Font("Segoe UI", 8.5F);
+            chkIncludeTentative.ForeColor = Color.FromArgb(96, 96, 96);
+            chkIncludeTentative.Location = new Point(340, 8);
+            chkIncludeTentative.Text = "⏳ 任意 (仮) も含める";
+            chkIncludeTentative.UseVisualStyleBackColor = true;
+            chkIncludeTentative.BackColor = Color.White;
+            chkIncludeTentative.CheckedChanged += chkIncludeTentative_CheckedChanged;
+
+            //
             // pnlChart
             //
             pnlChart.BackColor = Color.FromArgb(243, 243, 243);
+            pnlChart.Controls.Add(chkIncludeTentative);
             pnlChart.Dock = DockStyle.Top;
             pnlChart.Size = new Size(1100, 210);
 
@@ -363,6 +377,7 @@
         private CheckBox chkIncludeSelf;
         private FlowLayoutPanel pnlSummary;
         private Panel pnlChart;
+        private CheckBox chkIncludeTentative;
         private Panel pnlGridWrapper;
         private SplitContainer splitMain;
         private DataGridView dgvAppointments;

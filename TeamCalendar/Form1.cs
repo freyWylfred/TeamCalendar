@@ -737,6 +737,13 @@ namespace TeamCalendar
 
         #region グラフ
 
+        private void chkIncludeTentative_CheckedChanged(object? sender, EventArgs e)
+        {
+            if (_appointments.Count == 0) return;
+            CalculateDayStats();
+            pnlChart.Invalidate();
+        }
+
         private void CalculateDayStats()
         {
             var workMinutes = (_config.EndTime - _config.StartTime).TotalMinutes
@@ -784,9 +791,11 @@ namespace TeamCalendar
 
         private double CalcUserMeetingMinutes(string user, DateTime date)
         {
-            // 承認(3) / 主催者(1) のみグラフ集計対象
+            // 承認(3) / 主催者(1)、チェック時は任意(2)も含める
+            bool includeTentative = chkIncludeTentative.Checked;
             var dayAppts = _appointments
-                .Where(a => a.Owner == user && a.Start.Date == date && a.ResponseStatus is 3 or 1)
+                .Where(a => a.Owner == user && a.Start.Date == date
+                    && (a.ResponseStatus is 3 or 1 || (includeTentative && a.ResponseStatus == 2)))
                 .OrderBy(a => a.Start)
                 .ToList();
 
@@ -874,9 +883,12 @@ namespace TeamCalendar
             if (chartWidth <= 0 || chartHeight <= 0) return;
 
             // タイトル
+            var chartTitle = chkIncludeTentative.Checked
+                ? "\U0001f4ca  曜日別  会議時間 / 空き時間（任意含む）"
+                : "\U0001f4ca  曜日別  会議時間 / 空き時間";
             using (var titleFont = new Font("Segoe UI", 10F, FontStyle.Bold))
             using (var titleBrush = new SolidBrush(Color.FromArgb(40, 40, 40)))
-                g.DrawString("\U0001f4ca  曜日別  会議時間 / 空き時間", titleFont, titleBrush, cardRect.Left + 14, cardRect.Top + 8);
+                g.DrawString(chartTitle, titleFont, titleBrush, cardRect.Left + 14, cardRect.Top + 8);
 
             // Y軸スケール
             double maxHours = Math.Ceiling(_dayStats.Max(s => s.WorkMinutes) / 60.0);
