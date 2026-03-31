@@ -14,6 +14,10 @@ namespace TeamCalendar
         private readonly Dictionary<(int row, int col), AppointmentInfo?> _timelineCells = [];
         private List<DayOfWeekStats> _dayStats = [];
 
+        // Exchange Server 接続
+        private ExchangeCredential? _exchangeCredential;
+        private ExchangeCalendarService? _exchangeService;
+
         // サマリーカード値ラベル
         private Label _lblTotalValue = null!;
         private Label _lblAcceptedValue = null!;
@@ -239,9 +243,12 @@ namespace TeamCalendar
 
         #region イベントハンドラ
 
-        private void btnLoad_Click(object sender, EventArgs e)
+        private async void btnLoad_Click(object sender, EventArgs e)
         {
-            LoadCalendarData();
+            if (_exchangeService is not null)
+                await LoadCalendarDataViaExchangeAsync();
+            else
+                LoadCalendarData();
         }
 
         private void btnExport_Click(object sender, EventArgs e)
@@ -303,9 +310,205 @@ namespace TeamCalendar
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
+        private void mnuFileExchangeSettings_Click(object? sender, EventArgs e)
+        {
+            using var dlg = new ExchangeLoginDialog(_exchangeCredential);
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+            if (dlg.Disconnected)
+            {
+                _exchangeService?.Dispose();
+                _exchangeService = null;
+                _exchangeCredential = null;
+                lblConnectionMode.Text = "📧 Outlook COM";
+                lblConnectionMode.ForeColor = TextSecondary;
+                chkIncludeSelf.Text = "自分の予定を含める";
+                Log("Exchange 切断: Outlook COM モードに戻りました");
+                lblStatus.Text = "Outlook COM モードに切り替えました";
+                return;
+            }
+
+            if (dlg.Credential?.IsConfigured == true)
+            {
+                _exchangeService?.Dispose();
+                _exchangeCredential = dlg.Credential;
+                _exchangeService = new ExchangeCalendarService(_exchangeCredential);
+                lblConnectionMode.Text = $"🔗 Exchange: {_exchangeCredential.Email}";
+                lblConnectionMode.ForeColor = Color.FromArgb(5, 150, 105);
+                chkIncludeSelf.Text = $"自分の予定を含める ({_exchangeCredential.Email})";
+                Log($"Exchange 接続設定完了: {_exchangeCredential.ServerUrl} ({_exchangeCredential.Email})");
+                lblStatus.Text = "Exchange Server に接続しました。「▶ 予定を取得」で予定を読み込んでください";
+            }
+        }
+
         #endregion
 
-        #region ログ
+        #region Exchange予定取得
+
+        private async Task LoadCalendarDataViaExchangeAsync()
+        {
+            txtLog.Clear();
+            _appointments.Clear();
+            _dayStats.Clear();
+            dgvAppointments.DataSource = null;
+            pnlChart.Invalidate();
+
+            Log("=== Exchange Server経由 予定取得 開始 ===");
+
+            // 日付バリデーション
+            if (dtpStart.Value.Date > dtpEnd.Value.Date)
+            {
+                Log("[WARN] 開始日が終了日より後です。");
+                MessageBox.Show("開始日は終了日以前に設定してください。", "入力エラー",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int maxDays = 90;
+            if ((dtpEnd.Value.Date - dtpStart.Value.Date).TotalDays > maxDays)
+            {
+                Log($"[WARN] 取得期間が{maxDays}日を超えています。");
+                var result = MessageBox.Show(
+                    $"取得期間が{maxDays}日を超えています。処理に時間がかかる可能性があります。\n続行しますか？",
+                    "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (result != DialogResult.Yes) return;
+            }
+
+            var userEmails = ParseUserEmails();
+            if (!chkIncludeSelf.Checked && userEmails.Count == 0)
+            {
+                Log("[WARN] 対象ユーザーが指定されていません。");
+                MessageBox.Show("対象ユーザーのメールアドレスを入力するか、\n「自分の予定を含める」にチェックを入れてください。",
+                    "入力エラー", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var startDate = dtpStart.Value.Date;
+            var endDate = dtpEnd.Value.Date.AddDays(1); // CalendarView は終了日を排他的に扱う
+
+            Log($"取得期間: {dtpStart.Value:yyyy/MM/dd} ～ {dtpEnd.Value:yyyy/MM/dd}");
+            Log($"接続先: {_exchangeCredential!.ServerUrl}");
+            Log($"認証ユーザー: {_exchangeCredential.Email}");
+            Log($"自分の予定: {(chkIncludeSelf.Checked ? "含める" : "含めない")}");
+            if (userEmails.Count > 0)
+                Log($"他のユーザー: {string.Join("; ", userEmails)}");
+
+            try
+            {
+                Cursor = Cursors.WaitCursor;
+                btnLoad.Enabled = false;
+                btnExport.Enabled = false;
+                lblStatus.Text = "Exchange Serverから予定を取得中...";
+                Application.DoEvents();
+
+                int totalProcessed = 0;
+                var failedUsers = new List<(string email, string reason)>();
+
+                // 自分の予定を取得
+                if (chkIncludeSelf.Checked)
+                {
+                    Log("--- 自分の予定表を取得中 (EWS) ---");
+                    try
+                    {
+                        var results = await _exchangeService!.FindAppointmentsAsync(
+                            _exchangeCredential.Email, startDate, endDate);
+                        foreach (var a in results) a.Owner = "自分";
+                        _appointments.AddRange(results);
+                        totalProcessed += results.Count;
+                        Log($"  自分の予定: {results.Count}件");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError("自分の予定取得に失敗 (EWS)", ex);
+                        failedUsers.Add(("自分 (" + _exchangeCredential.Email + ")", ex.Message));
+                    }
+                }
+
+                // 他のユーザーの予定を取得
+                foreach (string email in userEmails)
+                {
+                    Log($"--- {email} の予定表を取得中 (EWS) ---");
+                    try
+                    {
+                        var results = await _exchangeService!.FindAppointmentsAsync(
+                            email, startDate, endDate);
+                        _appointments.AddRange(results);
+                        totalProcessed += results.Count;
+                        Log($"  {email}: {results.Count}件");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError($"'{email}' の予定取得に失敗 (EWS)", ex);
+                        failedUsers.Add((email, ex.Message));
+                    }
+                }
+
+                if (failedUsers.Count > 0)
+                {
+                    var details = string.Join("\n\n", failedUsers.Select(f =>
+                        $"❌ {f.email}\n   {f.reason.Replace("\n", "\n   ")}"));
+                    MessageBox.Show(
+                        $"以下のユーザーの予定を取得できませんでした:\n\n{details}",
+                        $"ユーザー取得エラー ({failedUsers.Count}件)",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+
+                Log($"全ユーザー取得完了: {totalProcessed}件");
+
+                BindTimelineGrid();
+                CalculateDayStats();
+                pnlChart.Invalidate();
+
+                int totalCount = _appointments.Count;
+                int acceptedCount = _appointments.Count(a => a.ResponseStatus is 3 or 1);
+                int tentativeCount = _appointments.Count(a => a.ResponseStatus == 2);
+                int declinedCount = _appointments.Count(a => a.ResponseStatus == 4);
+
+                UpdateSummaryCards(totalCount, acceptedCount, tentativeCount, declinedCount);
+
+                string statusText = $"取得完了 (Exchange): 全{totalCount}件 (承認/主催: {acceptedCount}件, 任意: {tentativeCount}件, 辞退: {declinedCount}件)";
+                lblStatus.Text = statusText;
+                Log($"=== 完了: {statusText} ===");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                LogError("Exchange 認証エラー", ex);
+                MessageBox.Show(
+                    "Exchange Server への認証に失敗しました。\n\n" +
+                    "メールアドレス・パスワード・ドメインを確認してください。\n" +
+                    "メニュー [ファイル] > [Exchange接続設定] で再設定できます。\n\n" +
+                    ex.Message,
+                    "認証エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                lblStatus.Text = "エラー: Exchange 認証失敗";
+            }
+            catch (HttpRequestException ex)
+            {
+                LogError("Exchange 通信エラー", ex);
+                MessageBox.Show(
+                    "Exchange Server との通信中にエラーが発生しました。\n\n" +
+                    "サーバー URL が正しいか確認してください。\n\n" +
+                    ex.Message,
+                    "通信エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                lblStatus.Text = "エラー: Exchange 通信失敗";
+            }
+            catch (Exception ex)
+            {
+                LogError("Exchange 予期しないエラー", ex);
+                MessageBox.Show(
+                    $"予期しないエラーが発生しました。\n\n" +
+                    $"例外型: {ex.GetType().Name}\n{ex.Message}\n\n" +
+                    "詳細はデバッグログを確認してください。",
+                    "予期しないエラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                lblStatus.Text = "エラー: 予期しないエラー";
+            }
+            finally
+            {
+                btnLoad.Enabled = true;
+                btnExport.Enabled = true;
+                Cursor = Cursors.Default;
+                Log("=== Exchange Server経由 予定取得 終了 ===");
+            }
+        }
 
         private void Log(string message)
         {

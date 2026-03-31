@@ -32,6 +32,8 @@
             lblTitle = new Label();
             menuStrip = new MenuStrip();
             mnuFile = new ToolStripMenuItem();
+            mnuFileExchangeSettings = new ToolStripMenuItem();
+            mnuFileSep0 = new ToolStripSeparator();
             mnuFileExport = new ToolStripMenuItem();
             mnuFileSep1 = new ToolStripSeparator();
             mnuFileExit = new ToolStripMenuItem();
@@ -47,6 +49,7 @@
             btnLoad = new Button();
             btnExport = new Button();
             chkDebugLog = new CheckBox();
+            lblConnectionMode = new Label();
             pnlSummary = new FlowLayoutPanel();
             pnlChart = new Panel();
             chkIncludeTentative = new CheckBox();
@@ -103,6 +106,7 @@
             pnlToolbar.Controls.Add(btnLoad);
             pnlToolbar.Controls.Add(btnExport);
             pnlToolbar.Controls.Add(chkDebugLog);
+            pnlToolbar.Controls.Add(lblConnectionMode);
             pnlToolbar.Dock = DockStyle.Top;
             pnlToolbar.Location = new Point(0, 52);
             pnlToolbar.Padding = new Padding(20, 0, 20, 0);
@@ -123,9 +127,20 @@
             //
             // mnuFile
             //
-            mnuFile.DropDownItems.AddRange(new ToolStripItem[] { mnuFileExport, mnuFileSep1, mnuFileExit });
+            mnuFile.DropDownItems.AddRange(new ToolStripItem[] { mnuFileExchangeSettings, mnuFileSep0, mnuFileExport, mnuFileSep1, mnuFileExit });
             mnuFile.ForeColor = Color.White;
             mnuFile.Text = "ファイル(&F)";
+
+            //
+            // mnuFileExchangeSettings
+            //
+            mnuFileExchangeSettings.Text = "🔗  Exchange接続設定(&S)";
+            mnuFileExchangeSettings.ShortcutKeys = Keys.Control | Keys.Shift | Keys.E;
+            mnuFileExchangeSettings.Click += mnuFileExchangeSettings_Click;
+
+            //
+            // mnuFileSep0
+            //
 
             //
             // mnuFileExport
@@ -249,6 +264,15 @@
             chkDebugLog.Text = "🔍 デバッグログ";
             chkDebugLog.UseVisualStyleBackColor = true;
             chkDebugLog.CheckedChanged += chkDebugLog_CheckedChanged;
+
+            //
+            // lblConnectionMode
+            //
+            lblConnectionMode.AutoSize = true;
+            lblConnectionMode.Font = new Font("Segoe UI", 8F);
+            lblConnectionMode.ForeColor = Color.FromArgb(100, 116, 139);
+            lblConnectionMode.Location = new Point(850, 20);
+            lblConnectionMode.Text = "📧 Outlook COM";
 
             //
             // pnlUserInput
@@ -439,6 +463,8 @@
         private Label lblTitle;
         private MenuStrip menuStrip;
         private ToolStripMenuItem mnuFile;
+        private ToolStripMenuItem mnuFileExchangeSettings;
+        private ToolStripSeparator mnuFileSep0;
         private ToolStripMenuItem mnuFileExport;
         private ToolStripSeparator mnuFileSep1;
         private ToolStripMenuItem mnuFileExit;
@@ -454,6 +480,7 @@
         private Button btnLoad;
         private Button btnExport;
         private CheckBox chkDebugLog;
+        private Label lblConnectionMode;
         private Panel pnlUserInput;
         private Label lblUserEmails;
         private TextBox txtUserEmails;
