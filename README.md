@@ -1,7 +1,9 @@
 # 📅 Team Calendar
 
-Outlook の予定表から会議情報を取得し、承認状況を一覧表示・Excel 出力できる Windows デスクトップアプリケーションです。  
-自分だけでなく、他のチームメンバーの共有カレンダーもまとめて取得できます。
+> **[🇯🇵 日本語版 README はこちら](docs/README.ja.md)**
+
+A Windows desktop application that retrieves meeting information from Outlook calendars, displays response statuses at a glance, and exports to Excel.  
+Fetch not only your own calendar but also shared calendars of other team members in one view.
 
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-purple)
 ![Windows Forms](https://img.shields.io/badge/UI-Windows%20Forms-blue)
@@ -9,52 +11,52 @@ Outlook の予定表から会議情報を取得し、承認状況を一覧表示
 
 ---
 
-## ✨ 主な機能
+## ✨ Features
 
-| 機能 | 説明 |
-|------|------|
-| **予定表取得** | Outlook COM 経由で予定表を読み取り（繰り返し予定にも対応） |
-| **複数ユーザー対応** | 自分＋他ユーザーの共有カレンダーをまとめて取得 |
-| **ステータス判定** | 承認 / 任意(仮) / 辞退 / 主催者 / 未応答 を自動分類 |
-| **色分け表示** | ステータスごとに行をカラーリング（承認=緑, 任意=黄, 辞退=赤, 主催=青） |
-| **サマリーカード** | 全件・承認・任意・辞退の件数を一目で確認 |
-| **Excel 出力** | 承認済み会議のみを `.xlsx` ファイルに出力（ClosedXML 使用） |
-| **デバッグログ** | トグルで表示できるリアルタイムログパネル（トラブルシュート用） |
+| Feature | Description |
+|---------|-------------|
+| **Calendar Retrieval** | Reads calendars via Outlook COM (supports recurring appointments) |
+| **Multi-User Support** | Fetches your calendar plus shared calendars of other users |
+| **Status Detection** | Automatically classifies: Accepted / Tentative / Declined / Organizer / Not Responded |
+| **Color-Coded Rows** | Row colors by status (Accepted = green, Tentative = yellow, Declined = red, Organizer = blue) |
+| **Summary Cards** | See counts for total, accepted, tentative, and declined at a glance |
+| **Excel Export** | Export only accepted meetings to `.xlsx` (powered by ClosedXML) |
+| **Debug Log** | Toggleable real-time log panel for troubleshooting |
 
 ---
 
-## 📸 画面イメージ
+## 📸 Screenshot
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  📅  Team Calendar                       (アクセントブルー)  │
+│  📅  Team Calendar                                        │
 ├──────────────────────────────────────────────────────────┤
-│  期間 [2025/03/24] 〜 [2025/03/28]  ▶予定を取得  📊Excel出力 │
-│  👥 対象ユーザー [user1@example.com; user2@...]  ☑自分を含める │
+│  Period [2025/03/24] ~ [2025/03/28]  ▶ Load  📊 Export    │
+│  👥 Users [user1@example.com; user2@...]  ☑ Include self   │
 ├──────────────────────────────────────────────────────────┤
-│  📋 全予定  │  ✅ 承認/主催  │  ⏳ 任意(仮)  │  ❌ 辞退    │
-│     12     │      8       │      3       │     1      │
+│  📋 All   │  ✅ Accepted  │  ⏳ Tentative  │  ❌ Declined │
+│     12    │      8       │      3        │     1       │
 ├──────────────────────────────────────────────────────────┤
-│  ユーザー │ 件名     │ 開始日時  │ 終了日時  │ ステータス   │
-│  自分     │ 定例会議  │ 03/24 10:00│ 03/24 11:00│ 承認       │
-│  user1@.. │ 1on1     │ 03/24 14:00│ 03/24 14:30│ 任意       │
+│  User     │ Subject  │ Start       │ End         │ Status   │
+│  Me       │ Standup  │ 03/24 10:00 │ 03/24 11:00 │ Accepted │
+│  user1@.. │ 1-on-1   │ 03/24 14:00 │ 03/24 14:30 │ Tentative│
 └──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔧 必要な環境
+## 🔧 Requirements
 
 - **OS**: Windows 10 / 11
-- **ランタイム**: [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
-- **Outlook**: Microsoft Outlook（デスクトップ版）がインストール済みであること
-- **共有カレンダー**: 他ユーザーの予定を取得する場合は、相手側で予定表の共有権限が設定されていること
+- **Runtime**: [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
+- **Outlook**: Microsoft Outlook (desktop version) must be installed
+- **Shared Calendars**: To retrieve other users' calendars, the target user must have granted calendar sharing permissions
 
 ---
 
-## 🚀 セットアップ
+## 🚀 Getting Started
 
-### ビルドして実行
+### Build & Run
 
 ```bash
 git clone https://github.com/freyWylfred/TeamCalendar.git
@@ -62,84 +64,86 @@ cd TeamCalendar
 dotnet run --project TeamCalendar
 ```
 
-### リリースビルド
+### Release Build
 
 ```bash
 dotnet publish TeamCalendar -c Release -o ./publish
 ```
 
-`./publish` フォルダ内の `TeamCalendar.exe` を実行してください。
+Run `TeamCalendar.exe` from the `./publish` folder.
 
 ---
 
-## 📖 使い方
+## 📖 Usage
 
-### 1. 予定を取得する
+### 1. Retrieve Appointments
 
-1. **期間** を開始日〜終了日で指定（デフォルトは今週の月〜金）
-2. 他のユーザーの予定も取得する場合は **「👥 対象ユーザー」** にメールアドレスをセミコロン区切りで入力
-3. **「▶ 予定を取得」** ボタンをクリック
+1. Select the **date range** (defaults to this week, Monday–Friday)
+2. To include other users, enter their email addresses separated by semicolons in the **"👥 Target Users"** field
+3. Click the **"▶ Load"** button
 
-### 2. Excel に出力する
+### 2. Export to Excel
 
-1. 予定を取得後、 **「📊 Excel出力 (承認済み)」** ボタンをクリック
-2. 保存先を選択すると、承認済み（承認＋主催者）の会議のみが `.xlsx` ファイルに出力されます
+1. After loading appointments, click the **"📊 Excel Export (Accepted)"** button
+2. Choose a save location — only accepted (Accepted + Organizer) meetings are exported to `.xlsx`
 
-### 3. デバッグログ
+### 3. Debug Log
 
-- **「🔍 デバッグログ」** チェックボックスをONにすると、画面下部にリアルタイムログが表示されます
-- Outlook との通信状況やエラー詳細の確認に使用できます
-
----
-
-## 🏗 技術スタック
-
-| 技術 | 用途 |
-|------|------|
-| **.NET 10** (Windows Forms) | UI フレームワーク |
-| **Outlook COM Interop** (`dynamic`) | Outlook 予定表へのアクセス |
-| **ClosedXML** | Excel (.xlsx) ファイル出力 |
+- Toggle the **"🔍 Debug Log"** checkbox to show a real-time log panel at the bottom
+- Useful for checking Outlook communication status and error details
 
 ---
 
-## 📁 プロジェクト構成
+## 🏗 Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **.NET 10** (Windows Forms) | UI framework |
+| **Outlook COM Interop** (`dynamic`) | Access to Outlook calendars |
+| **ClosedXML** | Excel (.xlsx) file export |
+
+---
+
+## 📁 Project Structure
 
 ```
 TeamCalendar/
-├── TeamCalendar.slnx           # ソリューションファイル
+├── TeamCalendar.slnx           # Solution file
 ├── .gitignore
 ├── LICENSE
-├── README.md
+├── README.md                   # English (this file)
+├── docs/
+│   └── README.ja.md            # Japanese
 └── TeamCalendar/
-    ├── TeamCalendar.csproj     # プロジェクト定義 (.NET 10)
-    ├── Program.cs              # エントリポイント
-    ├── Form1.cs                # メインフォーム（ロジック）
-    ├── Form1.Designer.cs       # メインフォーム（UI 定義）
-    └── Form1.resx              # リソースファイル
+    ├── TeamCalendar.csproj     # Project definition (.NET 10)
+    ├── Program.cs              # Entry point
+    ├── Form1.cs                # Main form (logic)
+    ├── Form1.Designer.cs       # Main form (UI definition)
+    └── Form1.resx              # Resource file
 ```
 
 ---
 
-## ⚠️ 注意事項
+## ⚠️ Notes
 
-- Outlook の **デスクトップ版** が必要です（Web 版 Outlook / new Outlook には非対応）
-- 他ユーザーの予定表を取得するには、Exchange / Microsoft 365 環境で **予定表の共有アクセス権** が必要です
-- 他ユーザーの予定で表示される「ステータス」は、**そのユーザー自身の応答状態** です
-
----
-
-## 🤝 コントリビューション
-
-Issue や Pull Request は歓迎します。
-
-1. このリポジトリを Fork
-2. フィーチャーブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add amazing feature'`)
-4. ブランチを Push (`git push origin feature/amazing-feature`)
-5. Pull Request を作成
+- The **desktop version** of Outlook is required (Outlook on the web / new Outlook are not supported)
+- Retrieving other users' calendars requires **calendar sharing permissions** in an Exchange / Microsoft 365 environment
+- The "Status" shown for other users reflects **that user's own response status**
 
 ---
 
-## 📄 ライセンス
+## 🤝 Contributing
 
-[MIT License](LICENSE) の下で公開されています。
+Issues and Pull Requests are welcome!
+
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).
