@@ -3,6 +3,24 @@
 このプロジェクトのすべての注目すべき変更はこのファイルに記録されます。  
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.0.0/) に準拠しています。
 
+## [1.5.0] - 2025-07-26
+
+### Added
+- **Exchange Server EWS 認証対応**
+  - メニュー [ファイル] > [Exchange接続設定] から Exchange Server へ直接接続可能に
+  - EWS (Exchange Web Services) SOAP API を `HttpClient` + `System.Xml.Linq` で実装（追加 NuGet パッケージ不要）
+  - NTLM 認証・Basic 認証・ドメイン指定に対応
+  - 自己署名証明書の SSL 検証スキップオプション（テスト環境向け）
+  - `ExchangeLoginDialog` — 接続情報入力ダイアログ（サーバー URL / メール / パスワード / ドメイン / SSL スキップ）
+  - ⚡ 接続テストボタンでダイアログ内から即時接続確認
+  - 🔌 切断ボタンで Outlook COM モードへ戻す操作に対応
+- **デュアルモードアーキテクチャ**
+  - Exchange 接続時 → EWS 経由でダイレクト取得（`LoadCalendarDataViaExchangeAsync`）
+  - 未接続時 → 従来の Outlook COM 経由取得（`LoadCalendarData`）
+  - ツールバーに接続モード表示ラベル (`📧 Outlook COM` / `🔗 Exchange: xxx@...`) を追加
+- **EWS CalendarView** で定期アイテムを自動展開（Outlook COM の `IncludeRecurrences` 相当）
+- 他ユーザー取得失敗時を `failedUsers` リストで収集し一括エラー表示（EWS / Outlook COM 共通）
+
 ## [1.4.1] - 2025-07-25
 
 ### Fixed
